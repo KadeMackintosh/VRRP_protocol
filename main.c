@@ -6,8 +6,12 @@
 #include <unistd.h> // for sleep()
 #include <arpa/inet.h> // for inet_pton
 
+#include <netpacket/packet.h>
+#include <net/ethernet.h>
+
 int main() {
 
+    // DEFINE NETWORK INTERFACE:
     char errbuf[PCAP_ERRBUF_SIZE];
     pcap_if_t *interfaces;
     if (pcap_findalldevs(&interfaces, errbuf) == -1) {
@@ -41,7 +45,7 @@ int main() {
     }
 
     if (i > 2) {
-        char input[100];
+        char input[5];
         int chosen_interface;
         
         printf("Please enter the interface number from the list above, or just press Enter for 1.) %s: \n", interfaces->name);
@@ -70,30 +74,59 @@ int main() {
         printf("The interface %s was automatically detected and selected.\n", interfaces->name);
     }
 
+    // CREATE SOCKET
+    int sock;
+    struct sockaddr_ll addr;
+    struct eth_hdr_t frame;
+
+    if((sock = socket(AF_PACKET, SOCK_RAW, 0)) == -1)
+    {
+        perror("SOCKET:");
+        exit(EXIT_FAILURE);
+    }
+
+    bzero(&addr, sizeof(addr));
+    addr.sll_family = AF_PACKET;
+    addr.sll_protocol = htons(ETH_P_ALL);
+    if((addr.sll_ifindex = if_nametoindex(interface->name)) == 0)
+    {
+        close(sock);
+        perror("if_nametoindex");
+        exit(EXIT_FAILURE);
+    }
+
+    if(bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1)
+    {
+        close(sock);
+        perror("BIND:");
+        exit(EXIT_FAILURE);
+    }
+
+    vrrp_state_t state;
+    // Initialize VRRP state structure
+    uint8_t vrid = 1;                // Virtual Router ID
+    uint8_t priority = 100;          // VRRP priority
+    uint16_t interval = 1;           // Advertisement interval in seconds
+    uint32_t ip_address;             // IP address in network byte order
+
+    // Convert IP address from string to network byte order
+    if (inet_pton(AF_INET, "192.168.1.1", &ip_address) != 1) {
+        perror("inet_pton");
+        exit(EXIT_FAILURE);
+    }
+
+    // Call the init_vrrp function to initialize the state
+    init_vrrp(&state, interface, sock, vrid, priority, interval, ip_address);
+
+    // Main event loop to send and receive VRRP packets
+    while (1) {
+        //send_vrrp_packet(&state);
+        // receive_vrrp_packet(&state);
+        sleep(interval); // Sleep for the advertisement interval
+    }
+
     // Free the list of interfaces
     pcap_freealldevs(interfaces);
 
-    // // Initialize VRRP state structure
-    // uint8_t vrid = 1;                // Virtual Router ID
-    // uint8_t priority = 100;          // VRRP priority
-    // uint16_t interval = 3;           // Advertisement interval in seconds
-    // uint32_t ip_address;             // IP address in network byte order
-
-    // // Convert IP address from string to network byte order
-    // if (inet_pton(AF_INET, "192.168.1.1", &ip_address) != 1) {
-    //     perror("inet_pton");
-    //     exit(EXIT_FAILURE);
-    // }
-
-    // // Call the init_vrrp function to initialize the state
-    // init_vrrp(&state, interface->name, vrid, priority, interval, ip_address);
-
-    // // Main event loop to send and receive VRRP packets
-    // while (1) {
-    //     send_vrrp_packet(&state);
-    //     receive_vrrp_packet(&state);
-    //     sleep(interval); // Sleep for the advertisement interval
-    // }
-
-    return 0;
+    return EXIT_SUCCESS;
 }
