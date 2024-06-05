@@ -36,9 +36,9 @@ void init_vrrp(vrrp_state_t *state, pcap_if_t *interface, int sock, uint8_t vrid
 
     // Initialize libpcap
     char errbuf[PCAP_ERRBUF_SIZE];
-    state->pcap_handle = pcap_open_live(interface, BUFSIZ, 1, 1000, errbuf);
+    state->pcap_handle = pcap_open_live(interface->name, BUFSIZ, 1, 1000, errbuf);
     if (state->pcap_handle == NULL) {
-        fprintf(stderr, "Could not open device %s: %s\n", interface, errbuf);
+        fprintf(stderr, "Could not open device %s: %s\n", interface->name, errbuf);
         exit(EXIT_FAILURE);
     }
 
@@ -86,7 +86,7 @@ void init_vrrp(vrrp_state_t *state, pcap_if_t *interface, int sock, uint8_t vrid
     memset(&addr, 0, sizeof(addr));
     addr.sll_family = AF_PACKET;
     addr.sll_protocol = htons(ETH_P_ALL);
-    addr.sll_ifindex = if_nametoindex(interface);
+    addr.sll_ifindex = if_nametoindex(interface->name);
     addr.sll_halen = ETH_ALEN;
     memcpy(addr.sll_addr, frame.dst_mac, ETH_ALEN);
 

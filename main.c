@@ -85,10 +85,12 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
+    printf("ACTIVE INTERFACE - TO BE USED: %s \n", interfaces->name);
+
     bzero(&addr, sizeof(addr));
     addr.sll_family = AF_PACKET;
     addr.sll_protocol = htons(ETH_P_ALL);
-    if((addr.sll_ifindex = if_nametoindex(interface->name)) == 0)
+    if((addr.sll_ifindex = if_nametoindex(interfaces->name)) == 0)
     {
         close(sock);
         perror("if_nametoindex");
@@ -115,8 +117,10 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
+
+    //ToDO! FIX init, segmentation issues...
     // Call the init_vrrp function to initialize the state
-    init_vrrp(&state, interface, sock, vrid, priority, interval, ip_address);
+    //init_vrrp(&state, interfaces, sock, vrid, priority, interval, ip_address);
 
     // Main event loop to send and receive VRRP packets
     while (1) {
