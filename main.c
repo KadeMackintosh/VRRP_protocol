@@ -117,14 +117,12 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-
-    //ToDO! FIX init, segmentation issues...
     // Call the init_vrrp function to initialize the state
-    //init_vrrp(&state, interfaces, sock, vrid, priority, interval, ip_address);
+    init_vrrp(&state, interfaces, sock, vrid, priority, interval, ip_address);
 
     // Main event loop to send and receive VRRP packets
     while (1) {
-        //send_vrrp_packet(&state);
+        send_vrrp_packet(&state);
         // receive_vrrp_packet(&state);
         sleep(interval); // Sleep for the advertisement interval
     }

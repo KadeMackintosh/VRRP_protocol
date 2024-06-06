@@ -4,10 +4,11 @@
 
 #include <stdint.h>
 #include <pcap.h>
+#include <net/if.h>
 
 #define VRRP_VERSION 2
 #define VRRP_TYPE_ADVERTISEMENT 1
-
+#define IFNAMSIZ 16
 typedef struct vrrp_packet_t {
     uint8_t version_type;
     uint8_t vrid;
@@ -26,13 +27,26 @@ typedef struct eth_hdr_t {
     struct vrrp_packet_t vrrp;
 } __attribute__((packed)) eth_hdr_t;
 
+// typedef struct {
+//     uint8_t state; // INIT, BACKUP, MASTER
+//     uint8_t priority;
+//     uint8_t vrid;
+//     uint16_t advertisement_interval;
+//     uint32_t ip_address;
+//     pcap_t *pcap_handle;
+// } vrrp_state_t;
+
 typedef struct {
-    uint8_t state; // INIT, BACKUP, MASTER
+    int state;
     uint8_t priority;
     uint8_t vrid;
     uint16_t advertisement_interval;
     uint32_t ip_address;
+    int sock;
     pcap_t *pcap_handle;
+    struct vrrp_packet_t vrrp_packet;
+    struct eth_hdr_t eth_frame;
+    char interface_name[IFNAMSIZ]; // Add this to store the interface name
 } vrrp_state_t;
 
 void init_vrrp(vrrp_state_t *state, pcap_if_t *interface, int sock, uint8_t vrid, uint8_t priority, uint16_t interval, uint32_t ip_address);
