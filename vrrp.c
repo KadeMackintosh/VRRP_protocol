@@ -128,7 +128,28 @@
 	
  	memset(msg, 0, msgLen);
      struct ethHdr* eth;
- 	eth = (struct ethHdr *) msg;
+     eth = (struct ethHdr*) msg;
+      //Get source MAC address
+          //pcap_addr_t *address = pInterface->addresses;
+     //while (address) {
+     //    if (address->addr && address->addr->sa_family == AF_PACKET) {
+     //        struct sockaddr_ll *sll = (struct sockaddr_ll *)address->addr;
+     //        memcpy(frame.src_mac, sll->sll_addr, 6);
+     //        break;
+     //    }
+     //    address = address->next;
+     //}
+     pcap_addr_t* address = interface->addresses;
+     while (address) {
+         if (address->addr && address->addr->sa_family == AF_PACKET) {
+            
+             struct sockaddr_ll* sll = (struct sockaddr_ll*)address->addr;
+             memcpy(eth->srcMAC, sll->sll_addr, 6);
+             break;
+         }
+         address = address->next;
+     }
+    
     eth->dstMAC[0] = 0x00; // Multicast OUI
     eth->dstMAC[1] = 0x00;
     eth->dstMAC[2] = 0x5E;
@@ -138,7 +159,7 @@
 	
  	eth->ethertype = htons(ARP_ETHER_TYPE);
 	
-     struct arpHdr *arp;
+    struct arpHdr *arp;
  	arp = (struct arpHdr *) eth->payload;
  	arp->hwType = htons(HW_TYPE);
  	arp->protoType = htons(IP_PROTO);
@@ -150,7 +171,7 @@
  		arp->srcMAC[i] = eth->srcMAC[i];
  	}
 
-    arp->srcIP = ntohl(detected_ipv4->sin_addr.s_addr);
+    arp->srcIP = detected_ipv4->sin_addr.s_addr;
 
     char vrrpBroadcast[] = "224.0.0.18";
     struct in_addr vrrpBroadcastBinary;
