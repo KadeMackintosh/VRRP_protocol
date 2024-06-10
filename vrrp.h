@@ -55,8 +55,8 @@ typedef struct {
     pcap_t *pcap_handle;
 } vrrp_state_t;
 
-void init_vrrp(vrrp_state_t *state, pcap_if_t *interface, int sock, uint8_t vrid, uint8_t priority, uint16_t interval, uint32_t ip_address);
+void init_vrrp(vrrp_state_t *state, pcap_if_t *interface, int sock, uint8_t vrid, uint8_t priority, uint16_t interval, uint32_t ip_address, struct sockaddr_in* detected_ipv4);
 void send_vrrp_packet(vrrp_state_t *state);
 void receive_vrrp_packet(vrrp_state_t *state);
-
+int send_arp_packet(pcap_if_t* interface, int* sockClient, uint8_t vrid, struct sockaddr_in* detected_ipv4);
 #endif // VRRP_H

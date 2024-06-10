@@ -13,6 +13,7 @@ int main() {
 
     // DEFINE NETWORK INTERFACE:
     char errbuf[PCAP_ERRBUF_SIZE];
+    struct sockaddr_in* detected_ipv4;
     pcap_if_t *interfaces;
     if (pcap_findalldevs(&interfaces, errbuf) == -1) {
         fprintf(stderr, "Error in pcap_findalldevs: %s\n", errbuf);
@@ -35,8 +36,10 @@ int main() {
                     !(interface->flags & PCAP_IF_LOOPBACK))  // Interface is not loopback
                 {
                     printf("%d.) %s \n", i, interface->name);
-                    printf("ip address: ");
-                    printf("%s", address->addr);
+                    detected_ipv4 = (struct sockaddr_in*)address->addr;
+                    char ip_str[INET_ADDRSTRLEN];
+                    inet_ntop(AF_INET, &(detected_ipv4->sin_addr), ip_str, INET_ADDRSTRLEN);
+                    printf("IP address: %s\n", ip_str);
                     i++;
                     break;  // Move to the next interface after printing
                 }
@@ -120,7 +123,7 @@ int main() {
     }
 
     // Call the init_vrrp function to initialize the state
-    //init_vrrp(&state, interfaces, sock, vrid, priority, interval, ip_address);
+    init_vrrp(&state, interfaces, sock, vrid, priority, interval, ip_address, detected_ipv4);
 
     // Main event loop to send and receive VRRP packets
     while (1) {
