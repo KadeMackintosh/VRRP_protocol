@@ -35,6 +35,8 @@ int main() {
                     !(interface->flags & PCAP_IF_LOOPBACK))  // Interface is not loopback
                 {
                     printf("%d.) %s \n", i, interface->name);
+                    printf("ip address: ");
+                    printf("%s", address->addr);
                     i++;
                     break;  // Move to the next interface after printing
                 }
@@ -117,8 +119,6 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-
-    //ToDO! FIX init, segmentation issues...
     // Call the init_vrrp function to initialize the state
     //init_vrrp(&state, interfaces, sock, vrid, priority, interval, ip_address);
 
