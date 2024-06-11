@@ -16,8 +16,7 @@
 
 
  #define ARP_ETHER_TYPE  (0x0806) //EtherType hodnota pre ARP
- #define OPCODE_REQ  (1) // ARP ZIADOST
- #define OPCODE_RESP (2) // ARP ODPOVED
+ #define GRATUITOUS_ARP_OPCODE (2) // Gratuitous ARP opcode - dva
  #define HW_LEN	    (6) // MAC adresa = 6B
  #define IP_LEN      (4) // IP adresa = 4B
  #define IP_PROTO    (0x0800) // IP
@@ -165,7 +164,7 @@
  	arp->protoType = htons(IP_PROTO);
  	arp->hwLen = HW_LEN;
  	arp->protoLen = IP_LEN;
- 	arp->opcode = htons(OPCODE_REQ);		
+ 	arp->opcode = htons(GRATUITOUS_ARP_OPCODE); // ARP opcode 
 	
      for (int i = 5; i >= 0; i--){
  		arp->srcMAC[i] = eth->srcMAC[i];
