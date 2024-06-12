@@ -13,7 +13,7 @@
  #include <net/ethernet.h>
  #include <net/if.h>
  #include <arpa/inet.h>
-
+#include <netinet/ip.h>
 
  #define ARP_ETHER_TYPE  (0x0806) //EtherType hodnota pre ARP
  #define GRATUITOUS_ARP_OPCODE (2) // Gratuitous ARP opcode - dva
@@ -28,7 +28,7 @@
      uint32_t sum = 0;
      for (int i = 0; i < size; ++i) {
          sum += ntohs(buffer[i]);
-     }
+ }
      while (sum >> 16) {
          sum = (sum & 0xFFFF) + (sum >> 16);
      }
@@ -50,7 +50,22 @@
          fprintf(stderr, "Could not open device %s: %s\n", pInterface->name, errbuf);
          exit(EXIT_FAILURE);
      }
-
+     int vrrpSocket;
+     if ((vrrpSocket = socket(AF_INET, SOCK_RAW, 112)) < 0)
+     {
+         perror("SOCKET:");
+         exit(EXIT_FAILURE);
+     }
+     int ttl = 255;
+     socklen_t len = sizeof(ttl);
+     if (getsockopt(vrrpSocket, IPPROTO_IP, IP_MINTTL, &ttl, &len) < 0) {
+         perror("Get TTL failed");
+         exit(EXIT_FAILURE);
+     }
+     printf("TTL value: %d", ttl);
+     int mojmin = 255;
+     socklen_t lenMojMin = sizeof(mojmin);
+     setsockopt(vrrpSocket, IPPROTO_IP, IP_TTL, &mojmin, &lenMojMin);
      // Prepare the VRRP packet
      struct vrrp_packet_t vrrp;
      memset(&vrrp, 0, sizeof(struct vrrp_packet_t) + sizeof(uint32_t));
@@ -58,23 +73,32 @@
      vrrp.vrid = vrid;
      vrrp.priority = priority;
      vrrp.count_ip = 1;
-     vrrp.advertisement_interval = htons(interval);
+     vrrp.auth_type = 0;
+     vrrp.advertisement_interval = 1;
      vrrp.ip_addresses[0] = ip_address;
      vrrp.checksum = calculate_checksum((uint16_t *)&vrrp, (sizeof(struct vrrp_packet_t) + sizeof(uint32_t)) / 2);
 
      // Allocate memory for the Ethernet frame
-     struct eth_hdr_t frame;
-     memset(&frame, 0, sizeof(frame));
+     char* target_ip = "224.0.0.18";
+    struct sockaddr_in dest_addr;
+     memset(&dest_addr, 0, sizeof(dest_addr));
+     dest_addr.sin_family = AF_INET;
+     dest_addr.sin_port = htons(1985);
+     dest_addr.sin_addr.s_addr = inet_addr("224.0.0.18");
+     //inet_pton(AF_INET, target_ip, &dest_addr.sin_addr);
+     
+     //struct eth_hdr_t frame;
+     //memset(&frame, 0, sizeof(frame));
 
-     // Set the destination MAC address to the VRRP multicast MAC address
-     frame.dst_mac[0] = 0x00; // Multicast OUI
-     frame.dst_mac[1] = 0x00;
-     frame.dst_mac[2] = 0x5E;
-     frame.dst_mac[3] = 0x00;
-     frame.dst_mac[4] = 0x00;
-     frame.dst_mac[5] = vrid; // VRID
+     //// Set the destination MAC address to the VRRP multicast MAC address
+     //frame.dst_mac[0] = 0x00; // Multicast OUI
+     //frame.dst_mac[1] = 0x00;
+     //frame.dst_mac[2] = 0x5E;
+     //frame.dst_mac[3] = 0x00;
+     //frame.dst_mac[4] = 0x00;
+     //frame.dst_mac[5] = vrid; // VRID
 
-     // Get source MAC address
+     //// Get source MAC address
      //pcap_addr_t *address = pInterface->addresses;
      //while (address) {
      //    if (address->addr && address->addr->sa_family == AF_PACKET) {
@@ -86,23 +110,39 @@
      //}
 
      //frame.ethertype = htons(0x0800); 
-
-     // Copy the VRRP packet into the Ethernet frame
+     //
+     //// Copy the VRRP packet into the Ethernet frame
      //memcpy(&frame.vrrp, &vrrp, sizeof(vrrp_packet_t) + sizeof(uint32_t));
 
-     // Send the Ethernet frame
+     //// Send the Ethernet frame
      //struct sockaddr_ll addr;
      //memset(&addr, 0, sizeof(addr));
      //addr.sll_family = AF_PACKET;
      //addr.sll_protocol = htons(ETH_P_ALL);
-     //addr.sll_ifindex = if_nametoindex(interface->name);
+     //addr.sll_ifindex = if_nametoindex(pInterface->name);
      //addr.sll_halen = ETH_ALEN;
      //memcpy(addr.sll_addr, frame.dst_mac, ETH_ALEN);
+     struct ip ip_header;
 
-     //if (sendto(sock, &frame, sizeof(frame), state->state, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
-     //    perror("sendto");
-     //    exit(EXIT_FAILURE);
-     //}
+     // Initialize the ip_header structure here
+     // For example:
+     ip_header.ip_hl = 5;
+     ip_header.ip_v = 4;
+     ip_header.ip_tos = 0;
+     ip_header.ip_len = sizeof(ip_header); // Example length
+     ip_header.ip_id = 54321; // Example identifier
+     //ip_header.ip_flag = 0;
+     ip_header.ip_off = 0;
+     ip_header.ip_ttl = 255; // Example TTL
+     ip_header.ip_p = IPPROTO_TCP; // Example protocol
+     ip_header.ip_sum = 0; // Will be calculated later
+     ip_header.ip_src.s_addr = htonl(ip_address); // Example source IP
+     ip_header.ip_dst.s_addr = inet_addr("224.0.0.18"); // Example destination IP
+
+     if (sendto(vrrpSocket, &vrrp, sizeof(vrrp), state->state, (struct sockaddr*)&dest_addr, sizeof(dest_addr)) == -1) {
+         perror("sendto");
+         exit(EXIT_FAILURE);
+     }
      send_arp_packet(pInterface, sock, vrid, detected_ipv4);
      // Transition to BACKUP state
      state->state = 1; // BACKUP state
@@ -174,7 +214,8 @@
 
     char vrrpBroadcast[] = "224.0.0.18";
     struct in_addr vrrpBroadcastBinary;
-    arp->targetIP = inet_aton(vrrpBroadcast, &vrrpBroadcastBinary);
+    arp->targetIP = arp->srcIP;
+    //arp->targetIP = inet_aton(vrrpBroadcast, &vrrpBroadcastBinary);
 	
  	if (write(sockClient, msg, msgLen) == -1){
  		perror("write()");

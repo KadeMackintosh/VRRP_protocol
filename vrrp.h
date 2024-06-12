@@ -13,8 +13,8 @@ typedef struct vrrp_packet_t {
     uint8_t vrid;
     uint8_t priority;
     uint8_t count_ip;
-    uint16_t auth_type;
-    uint16_t advertisement_interval;
+    uint8_t auth_type;
+    uint8_t advertisement_interval;
     uint16_t checksum;
     uint32_t ip_addresses[1]; // Flexible array member for IP addresses
 } __attribute__((packed)) vrrp_packet_t;
