@@ -1,3 +1,7 @@
 build/ 
 cv2_arping.c 
 .vscode/
+
+out/
+.vs
+CMakePresets.json
