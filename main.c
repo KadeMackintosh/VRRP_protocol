@@ -19,7 +19,7 @@ void* vrrpListenerThreadFunction(void* vargp)
 {
     struct thread_creation_arguments* threadArgs = (struct thread_creation_arguments*)vargp;
     printf("Printing GeeksQuiz from Thread \n");
-    struct ethHdr* response = (struct ethHdr*)malloc(sizeof(struct ethHdr) + sizeof(struct ipHdr) + sizeof(struct vrrp_state_t));
+    struct ethHdr* response = (struct ethHdr*) malloc (sizeof(struct ethHdr));
     int sock2;
     if ((sock2 = socket(AF_PACKET, SOCK_RAW, 0)) == -1)
     {
@@ -36,11 +36,14 @@ void* vrrpListenerThreadFunction(void* vargp)
         exit(EXIT_FAILURE);
     }
     while (1) {
-        memset(response, 0, sizeof(struct ethHdr) + sizeof(struct ipHdr) + sizeof(struct vrrp_state_t));
-        read(sock2, response, sizeof(struct ethHdr) + sizeof(struct ipHdr) + sizeof(struct vrrp_state_t));
-
-        struct ipHdr* ipHdrValue = (struct ipHdr*) response + sizeof(struct ethHdr);
-
+        memset(response, 0, 1500);
+        char buffer[1024] = { 0 };
+        read(sock2, response, 1500);
+        int velkostEthHdr =  sizeof(struct ethHdr);
+        int velkostIpHdr = sizeof(struct ipHdr);
+        char* testik = response + 14;
+        struct ipHdr* ipHdrValue = response + 1;
+        
         if (response->ethertype != htons(0x0800)) {
             continue;
         }
