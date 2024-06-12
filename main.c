@@ -110,26 +110,29 @@ int main() {
     }
 
     vrrp_state_t state;
-    // Initialize VRRP state structure
-    uint8_t vrid = 1;                // Virtual Router ID
-    uint8_t priority = 100;          // VRRP priority
-    uint16_t interval = 1;           // Advertisement interval in seconds
-    uint32_t ip_address;             // IP address in network byte order
+    state.state = VRRP_STATE_INIT;
+    state.priority = 255;
+    state.skew_time = ( (256 - state.priority) / 256 );
+    state.advertisement_interval = 1;
+    state.master_down_interval = (3 * state.advertisement_interval) + state.skew_time;
+    state.ip_address = detected_ipv4->sin_addr.s_addr;
+    state.vrid = 1;
+    state.authentication_type = 0;
 
-    // Convert IP address from string to network byte order
-    if (inet_pton(AF_INET, "192.168.1.1", &ip_address) != 1) {
-        perror("inet_pton");
-        exit(EXIT_FAILURE);
-    }
+    // // Convert IP address from string to network byte order
+    // if (inet_pton(AF_INET, "192.168.1.1", &ip_address) != 1) {
+    //     perror("inet_pton");
+    //     exit(EXIT_FAILURE);
+    // }
 
     // Call the init_vrrp function to initialize the state
-    init_vrrp(&state, interfaces, sock, vrid, priority, interval, ip_address, detected_ipv4);
+    init_vrrp(&state, interfaces, sock, detected_ipv4);
 
     // Main event loop to send and receive VRRP packets
     while (1) {
         //send_vrrp_packet(&state);
         // receive_vrrp_packet(&state);
-        sleep(interval); // Sleep for the advertisement interval
+        sleep(5); // Sleep for the advertisement interval
     }
 
     // Free the list of interfaces
