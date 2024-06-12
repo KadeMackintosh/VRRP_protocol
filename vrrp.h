@@ -53,7 +53,6 @@ struct ipHdr
     uint8_t ip_p;			/* protocol */
     unsigned short ip_sum;		/* checksum */
     struct in_addr ip_src, ip_dst;	/* source and dest address */
-    uint8_t payload[0]
   };
 
 struct ethHdr{
@@ -83,7 +82,7 @@ struct arpHdr{
 	uint32_t targetIP;
 } __attribute__ ((packed));
 
-typedef struct {
+typedef struct vrrp_state_t {
     uint8_t state; // INIT, BACKUP, MASTER
     uint8_t priority;
     uint8_t vrid;

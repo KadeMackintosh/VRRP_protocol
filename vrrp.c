@@ -32,6 +32,7 @@ uint16_t calculate_checksum(uint16_t* buffer, int size) {
 }
 
 void init_state(vrrp_state_t* state, pcap_if_t* pInterface, int sock, struct sockaddr_in* detected_ipv4) {
+	
 	if (state->priority == 255)
 	{
 		send_arp_packet(pInterface, sock, state->vrid, detected_ipv4);

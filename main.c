@@ -14,7 +14,44 @@ struct thread_creation_arguments {
     pcap_if_t* pInterface;
     struct sockaddr_in* detected_ipv4;
 }args;
-void* listenerThreadFunction(void* vargp)
+
+void* vrrpListenerThreadFunction(void* vargp)
+{
+    struct thread_creation_arguments* threadArgs = (struct thread_creation_arguments*)vargp;
+    printf("Printing GeeksQuiz from Thread \n");
+    struct ethHdr* response = (struct ethHdr*)malloc(sizeof(struct ethHdr) + sizeof(struct ipHdr) + sizeof(struct vrrp_state_t));
+    int sock2;
+    if ((sock2 = socket(AF_PACKET, SOCK_RAW, 0)) == -1)
+    {
+        perror("SOCKET:");
+        exit(EXIT_FAILURE);
+    }
+    struct sockaddr_ll cAddr;
+    memset(&cAddr, 0, sizeof(cAddr));
+    cAddr.sll_family = AF_PACKET;
+    cAddr.sll_protocol = htons(ETH_P_ALL);
+    if (bind(sock2, (struct sockaddr*)&cAddr, sizeof(cAddr)) == -1) {
+        perror("bind()");
+        close(sock2);
+        exit(EXIT_FAILURE);
+    }
+    while (1) {
+        memset(response, 0, sizeof(struct ethHdr) + sizeof(struct ipHdr) + sizeof(struct vrrp_state_t));
+        read(sock2, response, sizeof(struct ethHdr) + sizeof(struct ipHdr) + sizeof(struct vrrp_state_t));
+
+        struct ipHdr* ipHdrValue = (struct ipHdr*) response + sizeof(struct ethHdr);
+
+        if (response->ethertype != htons(0x0800)) {
+            continue;
+        }
+        printf("%s", ipHdrValue);
+        printf("topka");
+        continue;
+        }
+    return NULL;
+    }
+
+void* arpListenerThreadFunction(void* vargp)
 {
     struct thread_creation_arguments* threadArgs = (struct thread_creation_arguments *) vargp;
     printf("Printing GeeksQuiz from Thread \n");
@@ -25,47 +62,49 @@ void* listenerThreadFunction(void* vargp)
         perror("SOCKET:");
         exit(EXIT_FAILURE);
     }
-
+    struct sockaddr_ll cAddr;
+    memset(&cAddr, 0, sizeof(cAddr));
+    cAddr.sll_family = AF_PACKET;
+    cAddr.sll_protocol = htons(ETH_P_ALL);
+    if (bind(sock2, (struct sockaddr*) &cAddr, sizeof(cAddr)) == -1) {
+        perror("bind()");
+        close(sock2);
+        exit(EXIT_FAILURE);
+    }
     while (1) {
         struct arpHdr* arp_resp = (struct arpHdr*)response->payload;
 
         memset(response, 0, sizeof(struct ethHdr) + sizeof(struct arpHdr));
         read(sock2, response, sizeof(struct ethHdr) + sizeof(struct arpHdr));
+       /*struct ipHdr* ip_header = (struct ipHdr)
+
+        if (response-> == htons(112)) {
+        
+        }*/
 
         if (response->ethertype != htons(ARP_ETHER_TYPE)) {
             continue;
         }
-
+        printf("topka");
         if (arp_resp->opcode != htons(GRATUITOUS_ARP_OPCODE)) {
+            struct in_addr src_ip;
+            src_ip.s_addr = arp_resp->srcIP;
+
+            printf("Response from %s at %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx\n",
+                inet_ntoa(src_ip),
+                arp_resp->srcMAC[0],
+                arp_resp->srcMAC[1],
+                arp_resp->srcMAC[2],
+                arp_resp->srcMAC[3],
+                arp_resp->srcMAC[4],
+                arp_resp->srcMAC[5]);
             continue;
         }
-
+        
         //if (memcmp(&arp_resp->srcIP, &arp->targetIP, 4) != 0) {
         //    continue;
         //}
 
-        // sprava je ARP odpovedou na nasu ziadost => splnila vsetky pozadovane podmienky
-
-        struct in_addr src_ip;
-        src_ip.s_addr = arp_resp->srcIP;
-
-        /*printf("Response from %s at %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx\n",
-            inet_ntoa(src_ip),
-            *(arp_resp->srcMAC),
-            *(arp_resp->srcMAC+1),
-            *(arp_resp->srcMAC+2),
-            *(arp_resp->srcMAC+3),
-            *(arp_resp->srcMAC+4),
-            *(arp_resp->srcMAC+5));*/
-
-        printf("Response from %s at %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx\n",
-            inet_ntoa(src_ip),
-            arp_resp->srcMAC[0],
-            arp_resp->srcMAC[1],
-            arp_resp->srcMAC[2],
-            arp_resp->srcMAC[3],
-            arp_resp->srcMAC[4],
-            arp_resp->srcMAC[5]);
 
         break;
     }
@@ -188,13 +227,21 @@ int main() {
     // }
 
     // Call the init_state function to initialize the state
-    struct thread_creation_arguments threadArgs = {&state, interfaces, sock, detected_ipv4 };
-    init_state(&state, interfaces, sock, detected_ipv4);
-    pthread_t listenerThread;
-    printf("Before Thread\n");
-    pthread_create(&listenerThread, NULL, listenerThreadFunction, (void*)&threadArgs);
-    pthread_join(listenerThread, NULL);
-    printf("After Thread\n");
+    struct thread_creation_arguments threadArgs = {sock, &state, interfaces, detected_ipv4 };
+    pthread_t arpListenerThread, vrrpListenerThread;
+
+    pthread_create(&arpListenerThread, NULL, arpListenerThreadFunction, (void*)&threadArgs);
+    printf("Init ARP thread listener\n");
+
+
+    pthread_create(&vrrpListenerThread, NULL, vrrpListenerThreadFunction, (void*)&threadArgs);
+    printf("Init VRRP thread listener\n");
+
+    //init_state(&state, interfaces, sock, detected_ipv4);
+    
+    // todo test
+    send_vrrp_packet(&state, interfaces, sock, detected_ipv4);
+    printf("poslali sme veci");
     // Main event loop to send and receive VRRP packets
     while (1) {
         //send_vrrp_packet(&state);
