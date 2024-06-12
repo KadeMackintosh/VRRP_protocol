@@ -16,12 +16,7 @@
 #include <netinet/ip.h>
 #include <time.h>
 
-#define ARP_ETHER_TYPE  (0x0806) //EtherType hodnota pre ARP
-#define GRATUITOUS_ARP_OPCODE (2) // Gratuitous ARP opcode - dva
-#define HW_LEN	    (6) // MAC adresa = 6B
-#define IP_LEN      (4) // IP adresa = 4B
-#define IP_PROTO    (0x0800) // IP
-#define HW_TYPE     (0x0001) // Ethernet
+
 
 
 // Function to calculate VRRP checksum
@@ -36,7 +31,7 @@ uint16_t calculate_checksum(uint16_t* buffer, int size) {
 	return htons(~sum);
 }
 
-void init_vrrp(vrrp_state_t* state, pcap_if_t* pInterface, int sock, struct sockaddr_in* detected_ipv4) {
+void init_state(vrrp_state_t* state, pcap_if_t* pInterface, int sock, struct sockaddr_in* detected_ipv4) {
 	if (state->priority == 255)
 	{
 		send_arp_packet(pInterface, sock, state->vrid, detected_ipv4);
@@ -51,6 +46,10 @@ void init_vrrp(vrrp_state_t* state, pcap_if_t* pInterface, int sock, struct sock
 		state->master_down_timer = state->master_down_interval;
 		state->state = VRRP_STATE_BACKUP;
 	}
+}
+
+void backup_state(vrrp_state_t* state, pcap_if_t* pInterface, int sock, struct sockaddr_in* detected_ipv4) {
+
 }
 
 int send_vrrp_packet(vrrp_state_t* state, pcap_if_t* pInterface, int sock, struct sockaddr_in* detected_ipv4) {
@@ -112,7 +111,7 @@ int send_vrrp_packet(vrrp_state_t* state, pcap_if_t* pInterface, int sock, struc
 	}
 }
 
-int send_arp_packet(pcap_if_t* interface, int* sockClient, uint8_t vrid, struct sockaddr_in* detected_ipv4) {
+int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct sockaddr_in* detected_ipv4) {
 
 	unsigned int msgLen = sizeof(struct eth_hdr_t) + sizeof(struct arpHdr);
 
@@ -153,7 +152,7 @@ int send_arp_packet(pcap_if_t* interface, int* sockClient, uint8_t vrid, struct 
 	struct arpHdr* arp;
 	arp = (struct arpHdr*)eth->payload;
 	arp->hwType = htons(HW_TYPE);
-	arp->protoType = htons(IP_PROTO);
+	arp->protoType = htons(ARP_ETHER_TYPE);
 	arp->hwLen = HW_LEN;
 	arp->protoLen = IP_LEN;
 	arp->opcode = htons(GRATUITOUS_ARP_OPCODE); // ARP opcode 

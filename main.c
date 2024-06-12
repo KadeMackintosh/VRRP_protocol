@@ -8,7 +8,69 @@
 
 #include <netpacket/packet.h>
 #include <net/ethernet.h>
+struct thread_creation_arguments {
+    int sock;
+    vrrp_state_t* state;
+    pcap_if_t* pInterface;
+    struct sockaddr_in* detected_ipv4;
+}args;
+void* listenerThreadFunction(void* vargp)
+{
+    struct thread_creation_arguments* threadArgs = (struct thread_creation_arguments *) vargp;
+    printf("Printing GeeksQuiz from Thread \n");
+    struct ethHdr* response = (struct ethHdr*) malloc(sizeof(struct ethHdr) + sizeof(struct arpHdr));
+    int sock2;
+    if ((sock2 = socket(AF_PACKET, SOCK_RAW, 0)) == -1)
+    {
+        perror("SOCKET:");
+        exit(EXIT_FAILURE);
+    }
 
+    while (1) {
+        struct arpHdr* arp_resp = (struct arpHdr*)response->payload;
+
+        memset(response, 0, sizeof(struct ethHdr) + sizeof(struct arpHdr));
+        read(sock2, response, sizeof(struct ethHdr) + sizeof(struct arpHdr));
+
+        if (response->ethertype != htons(ARP_ETHER_TYPE)) {
+            continue;
+        }
+
+        if (arp_resp->opcode != htons(GRATUITOUS_ARP_OPCODE)) {
+            continue;
+        }
+
+        //if (memcmp(&arp_resp->srcIP, &arp->targetIP, 4) != 0) {
+        //    continue;
+        //}
+
+        // sprava je ARP odpovedou na nasu ziadost => splnila vsetky pozadovane podmienky
+
+        struct in_addr src_ip;
+        src_ip.s_addr = arp_resp->srcIP;
+
+        /*printf("Response from %s at %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx\n",
+            inet_ntoa(src_ip),
+            *(arp_resp->srcMAC),
+            *(arp_resp->srcMAC+1),
+            *(arp_resp->srcMAC+2),
+            *(arp_resp->srcMAC+3),
+            *(arp_resp->srcMAC+4),
+            *(arp_resp->srcMAC+5));*/
+
+        printf("Response from %s at %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx\n",
+            inet_ntoa(src_ip),
+            arp_resp->srcMAC[0],
+            arp_resp->srcMAC[1],
+            arp_resp->srcMAC[2],
+            arp_resp->srcMAC[3],
+            arp_resp->srcMAC[4],
+            arp_resp->srcMAC[5]);
+
+        break;
+    }
+    return NULL;
+}
 int main() {
 
     // DEFINE NETWORK INTERFACE:
@@ -125,9 +187,14 @@ int main() {
     //     exit(EXIT_FAILURE);
     // }
 
-    // Call the init_vrrp function to initialize the state
-    init_vrrp(&state, interfaces, sock, detected_ipv4);
-
+    // Call the init_state function to initialize the state
+    struct thread_creation_arguments threadArgs = {&state, interfaces, sock, detected_ipv4 };
+    init_state(&state, interfaces, sock, detected_ipv4);
+    pthread_t listenerThread;
+    printf("Before Thread\n");
+    pthread_create(&listenerThread, NULL, listenerThreadFunction, (void*)&threadArgs);
+    pthread_join(listenerThread, NULL);
+    printf("After Thread\n");
     // Main event loop to send and receive VRRP packets
     while (1) {
         //send_vrrp_packet(&state);
@@ -140,3 +207,4 @@ int main() {
 
     return EXIT_SUCCESS;
 }
+

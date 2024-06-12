@@ -12,6 +12,13 @@
 #define VRRP_VERSION 2
 #define VRRP_TYPE_ADVERTISEMENT 1
 
+#define ARP_ETHER_TYPE  (0x0806) //EtherType hodnota pre ARP
+#define GRATUITOUS_ARP_OPCODE (2) // Gratuitous ARP opcode - dva
+#define HW_LEN	    (6) // MAC adresa = 6B
+#define IP_LEN      (4) // IP adresa = 4B
+#define IP_PROTO    (0x0800) // IP
+#define HW_TYPE     (0x0001) // Ethernet
+
 typedef struct vrrp_packet_t {
     uint8_t version_type;
     uint8_t vrid;
@@ -91,8 +98,8 @@ typedef struct {
 } vrrp_state_t;
 
 
-void init_vrrp(vrrp_state_t *state, pcap_if_t *interface, int sock, struct sockaddr_in* detected_ipv4);
-void send_vrrp_packet(vrrp_state_t *state);
+void init_state(vrrp_state_t *state, pcap_if_t *interface, int sock, struct sockaddr_in* detected_ipv4);
+int send_vrrp_packet(vrrp_state_t* state, pcap_if_t* pInterface, int sock, struct sockaddr_in* detected_ipv4);
 void receive_vrrp_packet(vrrp_state_t *state);
-int send_arp_packet(pcap_if_t* interface, int* sockClient, uint8_t vrid, struct sockaddr_in* detected_ipv4);
+int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct sockaddr_in* detected_ipv4);
 #endif // VRRP_H
