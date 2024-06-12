@@ -21,6 +21,7 @@ typedef struct vrrp_packet_t {
     uint8_t advertisement_interval;
     uint16_t checksum;
     uint32_t ip_addresses[1]; // Flexible array member for IP addresses
+    uint32_t authentication_data;
 } __attribute__((packed)) vrrp_packet_t;
 
 struct ipHdr
