@@ -10,8 +10,8 @@
 #include <net/ethernet.h>
 struct thread_creation_arguments {
     int sock;
-    vrrp_state_t* state;
-    pcap_if_t* pInterface;
+    vrrp_state* state;
+	pcap_if_t* pInterface;
     struct sockaddr_in* detected_ipv4;
 }args;
 
@@ -19,7 +19,7 @@ void* vrrpListenerThreadFunction(void* vargp)
 {
     struct thread_creation_arguments* threadArgs = (struct thread_creation_arguments*)vargp;
     printf("Printing GeeksQuiz from Thread \n");
-    struct ethHdr* response = (struct ethHdr*) malloc (sizeof(struct ethHdr));
+    struct ethhdr* response = (struct ethHdr*) malloc (sizeof(struct ethhdr));
     int sock2;
     if ((sock2 = socket(AF_PACKET, SOCK_RAW, 0)) == -1)
     {
@@ -39,12 +39,11 @@ void* vrrpListenerThreadFunction(void* vargp)
         memset(response, 0, 1500);
         char buffer[1024] = { 0 };
         read(sock2, response, 1500);
-        int velkostEthHdr =  sizeof(struct ethHdr);
-        int velkostIpHdr = sizeof(struct ipHdr);
+        int velkostEthHdr =  sizeof(struct ethhdr);
         char* testik = response + 14;
         struct ipHdr* ipHdrValue = response + 1;
         
-        if (response->ethertype != htons(0x0800)) {
+        if (response->h_proto != htons(0x0800)) {
             continue;
         }
         printf("%s", ipHdrValue);
@@ -58,7 +57,7 @@ void* arpListenerThreadFunction(void* vargp)
 {
     struct thread_creation_arguments* threadArgs = (struct thread_creation_arguments *) vargp;
     printf("Printing GeeksQuiz from Thread \n");
-    struct ethHdr* response = (struct ethHdr*) malloc(sizeof(struct ethHdr) + sizeof(struct arpHdr));
+    struct ethhdr* response = (struct ethhdr*) malloc(sizeof(struct ethhdr) + sizeof(struct arpHdr));
     int sock2;
     if ((sock2 = socket(AF_PACKET, SOCK_RAW, 0)) == -1)
     {
@@ -75,17 +74,12 @@ void* arpListenerThreadFunction(void* vargp)
         exit(EXIT_FAILURE);
     }
     while (1) {
-        struct arpHdr* arp_resp = (struct arpHdr*)response->payload;
+        struct arpHdr* arp_resp = (struct arpHdr*)response + 1;
 
-        memset(response, 0, sizeof(struct ethHdr) + sizeof(struct arpHdr));
-        read(sock2, response, sizeof(struct ethHdr) + sizeof(struct arpHdr));
-       /*struct ipHdr* ip_header = (struct ipHdr)
+        memset(response, 0, sizeof(struct ethhdr) + sizeof(struct arpHdr));
+        read(sock2, response, sizeof(struct ethhdr) + sizeof(struct arpHdr));
 
-        if (response-> == htons(112)) {
-        
-        }*/
-
-        if (response->ethertype != htons(ARP_ETHER_TYPE)) {
+        if (response->h_source != htons(ARP_ETHER_TYPE)) {
             continue;
         }
         printf("topka");
@@ -103,11 +97,6 @@ void* arpListenerThreadFunction(void* vargp)
                 arp_resp->srcMAC[5]);
             continue;
         }
-        
-        //if (memcmp(&arp_resp->srcIP, &arp->targetIP, 4) != 0) {
-        //    continue;
-        //}
-
 
         break;
     }
@@ -115,7 +104,6 @@ void* arpListenerThreadFunction(void* vargp)
 }
 int main() {
 
-    // DEFINE NETWORK INTERFACE:
     char errbuf[PCAP_ERRBUF_SIZE];
     struct sockaddr_in* detected_ipv4;
     pcap_if_t *interfaces;
@@ -186,7 +174,6 @@ int main() {
     // CREATE SOCKET
     int sock;
     struct sockaddr_ll addr;
-    struct eth_hdr_t frame;
 
     if((sock = socket(AF_PACKET, SOCK_RAW, 0)) == -1)
     {
@@ -213,7 +200,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    vrrp_state_t state;
+    vrrp_state state;
     state.state = VRRP_STATE_INIT;
     state.priority = 255;
     state.skew_time = ( (256 - state.priority) / 256 );
@@ -229,7 +216,6 @@ int main() {
     //     exit(EXIT_FAILURE);
     // }
 
-    // Call the init_state function to initialize the state
     struct thread_creation_arguments threadArgs = {sock, &state, interfaces, detected_ipv4 };
     pthread_t arpListenerThread, vrrpListenerThread;
 
@@ -240,12 +226,11 @@ int main() {
     pthread_create(&vrrpListenerThread, NULL, vrrpListenerThreadFunction, (void*)&threadArgs);
     printf("Init VRRP thread listener\n");
 
-    //init_state(&state, interfaces, sock, detected_ipv4);
+    init_state(&state, interfaces, sock, detected_ipv4);
     
     // todo test
     send_vrrp_packet(&state, interfaces, sock, detected_ipv4);
     printf("poslali sme veci");
-    // Main event loop to send and receive VRRP packets
     while (1) {
         //send_vrrp_packet(&state);
         // receive_vrrp_packet(&state);
