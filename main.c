@@ -70,7 +70,7 @@ void* arpListenerThreadFunction(void* vargp)
 
     char buff[1500];
     int sock2;
-    if ((sock2 = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) == -1)
+    if ((sock2 = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP))) == -1)
     {
         perror("SOCKET:");
         exit(EXIT_FAILURE);
@@ -78,15 +78,16 @@ void* arpListenerThreadFunction(void* vargp)
     struct sockaddr_ll cAddr;
     memset(&cAddr, 0, sizeof(cAddr));
     cAddr.sll_family = AF_PACKET;
-    cAddr.sll_protocol = htons(ETH_P_ALL);
-    cAddr.sll_halen = ETH_ALEN;
-    char mac_addr[ETH_ALEN] = "\0x00\0x5E\0x00\0x00\0x01";
-    memcpy(cAddr.sll_addr, mac_addr, ETH_ALEN);
-    // if (bind(sock2, (struct sockaddr*) &cAddr, sizeof(cAddr)) == -1) {
-    //     perror("bind()");
-    //     close(sock2);
-    //     exit(EXIT_FAILURE);
-    // }
+    cAddr.sll_protocol = htons(ETH_P_ARP);
+    // cAddr.sll_halen = ETH_ALEN;
+    // char mac_addr[ETH_ALEN] = "\0x00\0x5E\0x00\0x00\0x01";
+    // memcpy(cAddr.sll_addr, mac_addr, ETH_ALEN);
+    cAddr.sll_ifindex = 2; // poradie interface
+    if (bind(sock2, (struct sockaddr*) &cAddr, sizeof(cAddr)) == -1) {
+        perror("bind()");
+        close(sock2);
+        exit(EXIT_FAILURE);
+    }
     while (1) {
         //struct arpHdr* arp_resp = (struct arpHdr*)response + 1;
 // _source 
@@ -95,7 +96,7 @@ void* arpListenerThreadFunction(void* vargp)
         
         //read(sock2, response, sizeof(struct ethhdr) + sizeof(struct arpHdr));
         //recvfrom(sock2, buff, 1500, 0, (struct sockaddr*) &cAddr, sizeof(cAddr)
-        if (recvfrom(sock2, buff, 1500, 0, (struct sockaddr*) &cAddr, sizeof(cAddr)) < 0)
+        if (recvfrom(sock2, buff, 1500, 0, NULL, NULL) < 0)
         {
             close(sock2);
             fprintf(stderr, "%s: nejde recv v arp\n", strerror(errno));
@@ -103,10 +104,10 @@ void* arpListenerThreadFunction(void* vargp)
         }
         
 
-        // for(int i = 0; i < ETH_ALEN; ++i) {
-        //     printf("%02x", buff[i]);
-        //     if(i < ETH_ALEN - 1) printf(":");
-        // }
+        for(int i = 0; i < ETH_ALEN; ++i) {
+            printf("%02x", buff[i]);
+            if(i < ETH_ALEN - 1) printf(":");
+        }
         // struct ethhdr* eth = (struct ethhdr*)buff;
         // struct arpHdr *arp;
 
@@ -190,8 +191,6 @@ void* arpListenerThreadFunction(void* vargp)
         //     fflush(stdout);
         //     continue;
         // }
-
-        break;
     }
     return NULL;
 }
