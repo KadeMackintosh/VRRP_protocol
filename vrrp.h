@@ -60,7 +60,8 @@ typedef struct vrrp_state {
 
 
 void init_state(vrrp_state *state, pcap_if_t *interface, int sock, struct sockaddr_in* detected_ipv4);
+void* arpListenerThreadFunction(void* vargp);
+void* vrrpListenerThreadFunction(void* vargp);
 int send_vrrp_packet(vrrp_state* state, pcap_if_t* pInterface, int sock, struct sockaddr_in* detected_ipv4);
-void receive_vrrp_packet(vrrp_state *state);
 int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct sockaddr_in* detected_ipv4);
 #endif // VRRP_H
