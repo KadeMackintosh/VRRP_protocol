@@ -76,7 +76,7 @@ int send_vrrp_packet(vrrp_state* state, pcap_if_t* pInterface, int sock, struct 
 
 	char* ifName = pInterface->name;
 	uint8_t packet[1500];
-
+	memset(&packet, 0, 1500);
 	if ((sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) == -1) {
 		perror("socket");
 		return -1;
