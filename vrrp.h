@@ -56,7 +56,7 @@ typedef struct vrrp_state {
     unsigned char authentication_data[100];
     uint16_t skew_time;
     uint32_t ip_address;
-} vrrp_state __attribute__((packed));
+} __attribute__((packed)) vrrp_state;
 
 struct thread_creation_arguments {
     int sock;
@@ -68,5 +68,5 @@ struct thread_creation_arguments {
 void init_state(vrrp_state *state, pcap_if_t *interface, int sock, struct sockaddr_in* detected_ipv4);
 int send_vrrp_packet(vrrp_state* state, pcap_if_t* pInterface, int sock, struct sockaddr_in* detected_ipv4);
 void receive_vrrp_packet(vrrp_state *state);
-int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct sockaddr_in* detected_ipv4);
+int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct vrrp_state* state);
 #endif // VRRP_H

@@ -36,7 +36,7 @@ void init_state(vrrp_state* state, pcap_if_t* pInterface, int sock, struct socka
 
 	if (state->priority == 255)
 	{
-		send_arp_packet(pInterface, sock, state->vrid, detected_ipv4);
+		send_arp_packet(pInterface, sock, state->vrid, state);
 
 		state->advertisement_timer = state->advertisement_interval;
 		state->state = VRRP_STATE_MASTER;
@@ -149,14 +149,9 @@ int send_vrrp_packet(vrrp_state* state, pcap_if_t* pInterface, int sock, struct 
 
 }
 
-int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct sockaddr_in* detected_ipv4) {
+int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct vrrp_state* state) {
 
 	unsigned int msgLen = sizeof(struct ethhdr) + sizeof(struct arpHdr);
-
-	if (msgLen < 60) {
-		msgLen = 60;
-	}
-
 	uint8_t* msg = (uint8_t*)malloc(msgLen);
 	if (msg == NULL) {
 		perror("malloc()");
@@ -190,7 +185,7 @@ int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct s
 	struct arpHdr* arp;
 	arp = (struct arpHdr*)(msg + sizeof(struct ethhdr));
 	arp->hwType = htons(HW_TYPE);
-	arp->protoType = htons(ARP_ETHER_TYPE);
+	arp->protoType = htons(IP_PROTO);
 	arp->hwLen = HW_LEN;
 	arp->protoLen = IP_LEN;
 	arp->opcode = htons(GRATUITOUS_ARP_OPCODE); // ARP opcode 
@@ -198,12 +193,12 @@ int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct s
 	for (int i = 5; i >= 0; i--) {
 		arp->srcMAC[i] = eth->h_source[i];
 	}
+	for (int i = 5; i >= 0; i--) {
+		arp->targetMAC[i] = 0x00;
+	}
 
-	arp->srcIP = detected_ipv4->sin_addr.s_addr;
-
-	char vrrpBroadcast[] = VRRP_MULTICAST_IPV4;
-	struct in_addr vrrpBroadcastBinary;
-	arp->targetIP = arp->srcIP;
+	arp->srcIP = state->ip_address;
+	arp->targetIP = state->ip_address;
 
 	if (write(sockClient, msg, msgLen) == -1) {
 		perror("write()");
