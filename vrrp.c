@@ -206,6 +206,3 @@ int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct v
 		return -1;
 	}
 }
-void receive_vrrp_packet(vrrp_state* state) {
-
-}
