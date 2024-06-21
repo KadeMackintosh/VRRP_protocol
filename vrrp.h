@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 #include <pcap.h>
-
+#include <netinet/ip.h>
 #define VRRP_STATE_INIT 0
 #define VRRP_STATE_BACKUP 1
 #define VRRP_STATE_MASTER 2
@@ -72,4 +72,5 @@ void* vrrpListenerThreadFunction(void* vargp);
 int send_vrrp_packet(vrrp_state* state, pcap_if_t* pInterface, int sock, struct sockaddr_in* detected_ipv4);
 void receive_vrrp_packet(vrrp_state *state);
 int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct vrrp_state* state);
+int verify_vrrp_packet(struct vrrp_state* state, struct iphdr* ipHeader, struct vrrp_header* vrrpHeader);
 #endif // VRRP_H

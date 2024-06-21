@@ -65,6 +65,10 @@ void* vrrpListenerThreadFunction(void* vargp)
         struct vrrp_header* vrrpHeader = (struct vrrp_header*)(buffer + sizeof(struct ethhdr) + sizeof(struct iphdr));
 
         if (ipHeader->protocol == 112) {
+            if (verify_vrrp_packet(threadArgs->state, ipHeader, vrrpHeader) == -1) {
+                continue;
+            }
+
             if (threadArgs->state->state == VRRP_STATE_BACKUP) {
                 if (vrrpHeader->ip_addresses == threadArgs->detected_ipv4 ||
                     eth->h_dest == routerMacAddress) {

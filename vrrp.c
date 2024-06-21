@@ -54,18 +54,23 @@ void backup_state(vrrp_state* state, pcap_if_t* pInterface, int sock, struct soc
 
 }
 
-int verify_vrrp_packet(vrrp_state state, struct iphdr ipHeader, struct vrrp_header vrrpHeader) {
+int verify_vrrp_packet(struct vrrp_state* state, struct iphdr* ipHeader, struct vrrp_header* vrrpHeader) {
+	uint16_t originalChecksum = vrrpHeader->checksum;
+	vrrpHeader->checksum = 0;
+	
+	uint16_t calculatedChecksum = checksum((unsigned short*) &vrrpHeader, sizeof(struct vrrp_header));
+	vrrpHeader->checksum = originalChecksum;
 
-	if (ipHeader.protocol != 112
-		|| ipHeader.ttl != 255
-		|| vrrpHeader.checksum != checksum((unsigned short*)&vrrpHeader, sizeof(struct vrrp_header))
-		|| vrrpHeader.version_type != (VRRP_VERSION << 4) | VRRP_TYPE_ADVERTISEMENT
-		|| vrrpHeader.auth_type != state.authentication_type
-		|| vrrpHeader.vrid != state.vrid
-		|| ipHeader.daddr != state.ip_address) {
+
+	if (ipHeader->protocol != 112
+		|| ipHeader->ttl != 255
+		|| vrrpHeader->checksum != calculatedChecksum
+		|| vrrpHeader->version_type != (VRRP_VERSION << 4) | VRRP_TYPE_ADVERTISEMENT
+		|| vrrpHeader->auth_type != state->authentication_type
+		|| vrrpHeader->vrid != state->vrid
+		|| ipHeader->daddr != state->ip_address) {
 		return -1;
 	}
-
 	return 0;
 }
 
