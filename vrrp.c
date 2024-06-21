@@ -173,11 +173,11 @@ int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct v
 		address = address->next;
 	}
 
-	eth->h_dest[0] = 0x01; // Multicast OUI
+	eth->h_dest[0] = 0x00; // Multicast OUI
 	eth->h_dest[1] = 0x00;
 	eth->h_dest[2] = 0x5E;
 	eth->h_dest[3] = 0x00;
-	eth->h_dest[4] = 0x00;
+	eth->h_dest[4] = 0x01;
 	eth->h_dest[5] = vrid; // VRID
 
 	eth->h_proto = htons(ARP_ETHER_TYPE);
