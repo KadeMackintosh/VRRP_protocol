@@ -13,12 +13,6 @@
 #include <errno.h>
 #include <asm-generic/socket.h>
 
-struct thread_creation_arguments {
-    int sock;
-    vrrp_state* state;
-	pcap_if_t* pInterface;
-    struct sockaddr_in* detected_ipv4;
-}args;
 #include "vrrptimers.h"
 
 void print_mac_address(uint8_t* mac) {
