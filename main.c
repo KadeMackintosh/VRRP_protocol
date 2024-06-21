@@ -5,7 +5,7 @@
 #include <string.h>
 #include <unistd.h> // for sleep()
 #include <arpa/inet.h> // for inet_pton
-
+#include <netinet/ip.h>
 #include <netpacket/packet.h>
 #include <net/ethernet.h>
 #include <netinet/if_ether.h>
@@ -36,7 +36,8 @@ void print_buffer(uint8_t* buffer, int length) {
 void* vrrpListenerThreadFunction(void* vargp)
 {
     struct thread_creation_arguments* threadArgs = (struct thread_creation_arguments*)vargp;
-    struct ethhdr* response = (struct ethHdr*) malloc (sizeof(struct ethhdr));
+    uint8_t buffer[ETH_FRAME_LEN];
+
     int sock2;
     if ((sock2 = socket(AF_PACKET, SOCK_RAW, 0)) == -1)
     {
@@ -53,26 +54,19 @@ void* vrrpListenerThreadFunction(void* vargp)
         exit(EXIT_FAILURE);
     }
     while (1) {
-        memset(response, 0, 1500);
+        memset(&buffer, 0, ETH_FRAME_LEN);
 
-        char buffer[1024] = { 0 };
-        read(sock2, response, 1500);
-        int velkostEthHdr =  sizeof(struct ethhdr);
-        char* testik = response + 14;
-        struct ipHdr* ipHdrValue = response + 1;
+        read(sock2, buffer, ETH_FRAME_LEN);
+        struct ethhdr* eth = (struct ethhdr*)buffer;
+        struct iphdr* ipHeader = (struct iphdr*)(buffer + sizeof(struct ethhdr));
+        struct vrrp_header* vrrpHeader = (struct vrrp_header*)(buffer + sizeof(struct ethhdr) + sizeof(struct iphdr));
 
-        if (response->h_proto != htons(112)) {
-            continue;
+        if (ipHeader->protocol == 112) {
+
+
+            printf("%d", vrrpHeader->priority);
         }
-
-        printf("%s", ipHdrValue);
-        // Print to the console
-        fprintf(stdout, "Instant print, vrrpListenerThreadFunction\n");
-
-        // Flush stdout to ensure immediate display
-        fflush(stdout);
-        continue;
-        }
+    }
     return NULL;
     }
 
@@ -137,6 +131,7 @@ void* arpListenerThreadFunction(void* vargp) {
 
 int main() {
 
+    setbuf(stdout, NULL);
     char errbuf[PCAP_ERRBUF_SIZE];
     struct sockaddr_in* detected_ipv4;
     pcap_if_t *interfaces;
@@ -254,7 +249,7 @@ int main() {
     printf("Init ARP thread listener\n");
 
 
-    // pthread_create(&vrrpListenerThread, NULL, vrrpListenerThreadFunction, (void*)&threadArgs);
+     pthread_create(&vrrpListenerThread, NULL, vrrpListenerThreadFunction, (void*)&threadArgs);
     // printf("Init VRRP thread listener\n");
     
     pthread_create(&advertisementTimerThread, NULL, advertisementTimerThreadFunction, (void*)&threadArgs);
@@ -262,11 +257,6 @@ int main() {
     // todo test
     //send_vrrp_packet(&state, interfaces, sock, detected_ipv4);
     // printf("poslali sme veci");
-    while (1) {
-        //send_vrrp_packet(&state);
-        //receive_vrrp_packet(&state);
-        sleep(5); // Sleep for the advertisement interval
-    }
 
     pthread_join(&arpListenerThread);
     pthread_join(&vrrpListenerThread);
