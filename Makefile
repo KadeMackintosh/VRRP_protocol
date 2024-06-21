@@ -7,13 +7,16 @@ TARGET=$(BUILD_DIR)/vrrp
 all: $(TARGET)
 	chmod 755 $(TARGET)
 
-$(TARGET): $(BUILD_DIR)/main.o $(BUILD_DIR)/vrrp.o
+$(TARGET): $(BUILD_DIR)/main.o $(BUILD_DIR)/vrrp.o $(BUILD_DIR)/vrrptimers.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
 $(BUILD_DIR)/main.o: main.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/vrrp.o: vrrp.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/vrrptimers.o: vrrptimers.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR):
