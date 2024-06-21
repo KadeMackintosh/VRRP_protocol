@@ -190,7 +190,7 @@ int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct s
 	struct arpHdr* arp;
 	arp = (struct arpHdr*)(msg + sizeof(struct ethhdr));
 	arp->hwType = htons(HW_TYPE);
-	arp->protoType = htons(ARP_ETHER_TYPE);
+	arp->protoType = htons(IP_PROTO);
 	arp->hwLen = HW_LEN;
 	arp->protoLen = IP_LEN;
 	arp->opcode = htons(GRATUITOUS_ARP_OPCODE); // ARP opcode 
@@ -199,11 +199,12 @@ int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct s
 		arp->srcMAC[i] = eth->h_source[i];
 	}
 
-	arp->srcIP = detected_ipv4->sin_addr.s_addr;
-
 	char vrrpBroadcast[] = VRRP_MULTICAST_IPV4;
 	struct in_addr vrrpBroadcastBinary;
-	arp->targetIP = arp->srcIP;
+
+	arp->srcIP = detected_ipv4->sin_addr.s_addr;
+	arp->targetIP = detected_ipv4->sin_addr.s_addr;
+	printf("IP address from send function: %s\n", inet_ntoa(detected_ipv4->sin_addr));
 
 	if (write(sockClient, msg, msgLen) == -1) {
 		perror("write()");

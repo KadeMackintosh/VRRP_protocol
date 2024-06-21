@@ -11,6 +11,7 @@
 #include <netinet/if_ether.h>
 #include <net/if_arp.h>
 #include <errno.h>
+#include <asm-generic/socket.h>
 
 struct thread_creation_arguments {
     int sock;
@@ -18,6 +19,24 @@ struct thread_creation_arguments {
 	pcap_if_t* pInterface;
     struct sockaddr_in* detected_ipv4;
 }args;
+
+void print_mac_address(uint8_t* mac) {
+    for (int i = 0; i < 6; i++) {
+        printf("%02x", mac[i]);
+        if (i < 5) printf(":");
+    }
+}
+
+// Function to print buffer in hexadecimal format
+void print_buffer(uint8_t* buffer, int length) {
+    for (int i = 0; i < length; i++) {
+        printf("%02x ", buffer[i]);
+        if ((i + 1) % 16 == 0) {
+            printf("\n");
+        }
+    }
+    printf("\n");
+}
 
 void* vrrpListenerThreadFunction(void* vargp)
 {
@@ -40,6 +59,7 @@ void* vrrpListenerThreadFunction(void* vargp)
     }
     while (1) {
         memset(response, 0, 1500);
+
         char buffer[1024] = { 0 };
         read(sock2, response, 1500);
         int velkostEthHdr =  sizeof(struct ethhdr);
@@ -61,137 +81,61 @@ void* vrrpListenerThreadFunction(void* vargp)
     return NULL;
     }
 
-void* arpListenerThreadFunction(void* vargp)
-{
-    struct thread_creation_arguments* threadArgs = (struct thread_creation_arguments *) vargp;
+void* arpListenerThreadFunction(void* vargp) {
+    struct thread_creation_arguments* threadArgs = (struct thread_creation_arguments*) vargp;
+    pcap_if_t* interface = threadArgs->pInterface;
+    int sockfd;
+    uint8_t buffer[ETH_FRAME_LEN];
     
-    //ToDo:
-    struct ethhdr* response = (struct ethhdr*) malloc(sizeof(struct ethhdr) + sizeof(struct arpHdr));
+    struct sockaddr saddr;
+    socklen_t saddr_len = sizeof(struct sockaddr);
 
-    char buff[1500];
-    int sock2;
-    if ((sock2 = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP))) == -1)
-    {
-        perror("SOCKET:");
-        exit(EXIT_FAILURE);
+    // Create raw socket
+    if ((sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP))) < 0) {
+        perror("Socket creation failed");
+        return NULL;
     }
-    struct sockaddr_ll cAddr;
-    memset(&cAddr, 0, sizeof(cAddr));
-    cAddr.sll_family = AF_PACKET;
-    cAddr.sll_protocol = htons(ETH_P_ARP);
-    // cAddr.sll_halen = ETH_ALEN;
-    // char mac_addr[ETH_ALEN] = "\0x00\0x5E\0x00\0x00\0x01";
-    // memcpy(cAddr.sll_addr, mac_addr, ETH_ALEN);
-    cAddr.sll_ifindex = 2; // poradie interface
-    if (bind(sock2, (struct sockaddr*) &cAddr, sizeof(cAddr)) == -1) {
-        perror("bind()");
-        close(sock2);
-        exit(EXIT_FAILURE);
+
+    // Bind to the specified interface
+    if (setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, interface->name, strlen(interface->name)) < 0) {
+        perror("arpListenerThreadFunction: Binding to interface failed");
+        close(sockfd);
+        return NULL;
     }
+
     while (1) {
-        //struct arpHdr* arp_resp = (struct arpHdr*)response + 1;
-// _source 
-        memset(buff, 0, 1500);
-
-        
-        //read(sock2, response, sizeof(struct ethhdr) + sizeof(struct arpHdr));
-        //recvfrom(sock2, buff, 1500, 0, (struct sockaddr*) &cAddr, sizeof(cAddr)
-        if (recvfrom(sock2, buff, 1500, 0, NULL, NULL) < 0)
-        {
-            close(sock2);
-            fprintf(stderr, "%s: nejde recv v arp\n", strerror(errno));
-            exit(1);
+        // Receive packet
+        memset(buffer, 0, ETH_FRAME_LEN);
+        int data_size = recvfrom(sockfd, buffer, ETH_FRAME_LEN, 0, &saddr, &saddr_len);
+        if (data_size < 0) {
+            perror("Recvfrom error");
+            close(sockfd);
+            return NULL;
         }
-        
 
-        for(int i = 0; i < ETH_ALEN; ++i) {
-            printf("%02x", buff[i]);
-            if(i < ETH_ALEN - 1) printf(":");
+        // Get Ethernet header
+        struct ethhdr* eth = (struct ethhdr*) buffer;
+
+        printf("Raw buffer data:\n");
+        print_buffer(buffer, data_size);
+
+        // Check if it's an ARP packet
+        if (ntohs(eth->h_proto) == ETH_P_ARP) {
+            struct arpHdr* arp = (struct arpHdr*) (buffer + sizeof(struct ethhdr));
+            printf("Received ARP packet:\n");
+            printf("Sender MAC: ");
+            print_mac_address(eth->h_source);
+            //ToDO!!!
+           // printf("\nSender IP: %s\n", inet_ntoa(*(struct in_addr*)arp->srcIP));
+            printf("Target MAC: ");
+            print_mac_address(eth->h_dest);
+            //ToDO!!!
+            //printf("\nTarget IP: %s\n", inet_ntoa(*(struct in_addr*)arp->targetIP));
+            printf("\n\n");
         }
-        // struct ethhdr* eth = (struct ethhdr*)buff;
-        // struct arpHdr *arp;
-
-
-        // printf("Ethernet Header:\n");
-        // printf("Destination MAC: ");
-        // for(int i = 0; i < ETH_ALEN; ++i) {
-        //     printf("%02x", eth->h_dest[i]);
-        //     if(i < ETH_ALEN - 1) printf(":");
-        // }
-        // printf("\nSource MAC: ");
-        // for(int i = 0; i < ETH_ALEN; ++i) {
-        //     printf("%02x", eth->h_source[i]);
-        //     if(i < ETH_ALEN - 1) printf(":");
-        // }
-        // printf("\nType: %04x\n", ntohs(eth->h_proto));
-
-        // // Print ARP header
-        // printf("ARP Header:\n");
-        // printf("Hardware Type: %d\n", ntohs(arp->htype));
-        // printf("Protocol Type: %d\n", ntohs(arp->ptype));
-        // printf("Hardware Address Length: %d\n", arp->hlen);
-        // printf("Protocol Address Length: %d\n", arp->plen);
-        // printf("Operation: %d\n", ntohs(arp->opcode));
-        // printf("Sender Hardware Address: ");
-        // for(int i = 0; i < ETH_ALEN; ++i) {
-        //     printf("%02x", arp->sha[i]);
-        //     if(i < ETH_ALEN - 1) printf(":");
-        // }
-        // printf("\nSender Protocol Address: %s\n", inet_ntoa(*(struct in_addr *)&arp->spa));
-        // printf("Target Hardware Address: ");
-        // for(int i = 0; i < ETH_ALEN; ++i) {
-        //     printf("%02x", arp->tha[i]);
-        //     if(i < ETH_ALEN - 1) printf(":");
-        // }
-        // printf("\nTarget Protocol Address: %s\n", inet_ntoa(*(struct in_addr *)&arp->tpa));
-
-        // // Check for gratuitous ARP packet
-        // if(ntohs(arp->opcode) == ARPOP_REQUEST && memcmp(arp->sha, arp->tha, 6) == 0) {
-        //     printf("Gratuitous ARP packet detected.\n");
-        // }
-
-        // fflush(stdout);
-        
-        // // // Flush stdout to ensure immediate display
-        // fflush(stdout);
-        
-        // if (ntohs(eth->h_proto) == ETH_P_ARP) {
-        //     arp = (struct arpHdr *)(buff + sizeof(struct ethhdr));
-
-        //     // Check if it's a gratuitous ARP packet
-        //     if (ntohs(arp->opcode) == ARPOP_REQUEST &&
-        //         memcmp(arp->srcMAC, arp->targetMAC, 6) == 0) {
-        //         fprintf(stdout, "Gratuitous ARP packet detected:\n");
-        //         fflush(stdout);
-        //         //printf("\nSender IP: %s\n", inet_ntoa(*(struct in_addr *)&arp->srcIP));
-        //     }
-        // }
-
-        // if (response->h_source != htons(ARP_ETHER_TYPE)) {
-        //     continue;
-        // }
-        //     // Print to the console
-        // fprintf(stdout, "Instant print, connection made\n");
-        
-        // // Flush stdout to ensure immediate display
-        // fflush(stdout);
-        // if (arp_resp->opcode == htons(GRATUITOUS_ARP_OPCODE)) {
-        //     struct in_addr src_ip;
-        //     src_ip.s_addr = arp_resp->srcIP;
-
-        //     fprintf(stdout, "Response from %s at %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx\n",
-        //         inet_ntoa(src_ip),
-        //         arp_resp->srcMAC[0],
-        //         arp_resp->srcMAC[1],
-        //         arp_resp->srcMAC[2],
-        //         arp_resp->srcMAC[3],
-        //         arp_resp->srcMAC[4],
-        //         arp_resp->srcMAC[5]);
-            
-        //     fflush(stdout);
-        //     continue;
-        // }
     }
+
+    close(sockfd);
     return NULL;
 }
 

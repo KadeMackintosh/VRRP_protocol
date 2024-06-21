@@ -33,15 +33,15 @@ typedef struct vrrp_header {
 } __attribute__((packed)) vrrp_packet_t;
 
 struct arpHdr{
-	uint16_t hwType;
-	uint16_t protoType;
-	uint8_t  hwLen;
-	uint8_t  protoLen;
-	uint16_t opcode;
-	uint8_t  srcMAC[6];
-	uint32_t srcIP;
-	uint8_t  targetMAC[6];
-	uint32_t targetIP;
+	uint16_t hwType; //2
+	uint16_t protoType; //2
+	uint8_t  hwLen; //1
+	uint8_t  protoLen; //1 
+	uint16_t opcode; //2
+	uint8_t  srcMAC[6];  //6
+	uint32_t srcIP; //4
+	uint8_t  targetMAC[6]; //6
+	uint32_t targetIP; // 4
 } __attribute__ ((packed));
 
 typedef struct vrrp_state {
