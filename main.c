@@ -8,12 +8,7 @@
 
 #include <netpacket/packet.h>
 #include <net/ethernet.h>
-struct thread_creation_arguments {
-    int sock;
-    vrrp_state* state;
-	pcap_if_t* pInterface;
-    struct sockaddr_in* detected_ipv4;
-}args;
+#include "vrrptimers.h"
 
 void* vrrpListenerThreadFunction(void* vargp)
 {
@@ -217,7 +212,7 @@ int main() {
     // }
 
     struct thread_creation_arguments threadArgs = {sock, &state, interfaces, detected_ipv4 };
-    pthread_t arpListenerThread, vrrpListenerThread;
+    pthread_t arpListenerThread, vrrpListenerThread, advertisementTimerThread, masterTimerThread;
 
     pthread_create(&arpListenerThread, NULL, arpListenerThreadFunction, (void*)&threadArgs);
     printf("Init ARP thread listener\n");
@@ -228,6 +223,8 @@ int main() {
 
     init_state(&state, interfaces, sock, detected_ipv4);
     
+    pthread_create(&advertisementTimerThread, NULL, advertisementTimerThreadFunction, (void*)&threadArgs);
+    pthread_create(&masterTimerThread, NULL, masterTimerThreadFunction, (void*)&threadArgs);
     // todo test
     send_vrrp_packet(&state, interfaces, sock, detected_ipv4);
     printf("poslali sme veci");

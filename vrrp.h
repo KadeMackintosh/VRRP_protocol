@@ -58,6 +58,12 @@ typedef struct vrrp_state {
     uint32_t ip_address;
 } vrrp_state __attribute__((packed));
 
+struct thread_creation_arguments {
+    int sock;
+    vrrp_state* state;
+    pcap_if_t* pInterface;
+    struct sockaddr_in* detected_ipv4;
+};
 
 void init_state(vrrp_state *state, pcap_if_t *interface, int sock, struct sockaddr_in* detected_ipv4);
 int send_vrrp_packet(vrrp_state* state, pcap_if_t* pInterface, int sock, struct sockaddr_in* detected_ipv4);

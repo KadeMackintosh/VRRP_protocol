@@ -13,7 +13,7 @@ endif()
 project ("vrrp")
 
 # Add source to this project's executable.
-add_executable (vrrp main.c vrrp.c )
+add_executable (vrrp main.c vrrp.c vrrptimers.c)
 find_library(PCAP_LIBRARY pcap)
 target_link_libraries(vrrp ${PCAP_LIBRARY})
 if (CMAKE_VERSION VERSION_GREATER 3.12)
