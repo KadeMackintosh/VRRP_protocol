@@ -56,6 +56,7 @@ typedef struct vrrp_state {
     unsigned char authentication_data[100];
     uint16_t skew_time;
     uint32_t ip_address;
+    uint8_t preempt_mode;
 } __attribute__((packed)) vrrp_state;
 
 struct thread_creation_arguments {

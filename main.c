@@ -53,6 +53,9 @@ void* vrrpListenerThreadFunction(void* vargp)
         close(sock2);
         exit(EXIT_FAILURE);
     }
+    struct sockaddr_ll* sll = (struct sockaddr_ll*)threadArgs->pInterface->addresses->addr;
+    uint8_t routerMacAddress[6];
+    memcpy(routerMacAddress, sll->sll_addr, 6);
     while (1) {
         memset(&buffer, 0, ETH_FRAME_LEN);
 
@@ -62,8 +65,24 @@ void* vrrpListenerThreadFunction(void* vargp)
         struct vrrp_header* vrrpHeader = (struct vrrp_header*)(buffer + sizeof(struct ethhdr) + sizeof(struct iphdr));
 
         if (ipHeader->protocol == 112) {
+            if (threadArgs->state->state == VRRP_STATE_BACKUP) {
+                if (vrrpHeader->ip_addresses == threadArgs->detected_ipv4 ||
+                    eth->h_dest == routerMacAddress) {
+                    continue;
+                }
 
-
+                if (vrrpHeader->priority == 0) {
+                    threadArgs->state->master_down_timer = threadArgs->state->skew_time;
+                }
+                else {
+                    if (threadArgs->state->preempt_mode == 0 || vrrpHeader->priority >= threadArgs->state->priority) {
+                        threadArgs->state->master_down_timer = threadArgs->state->master_down_interval;
+                    }
+                    else {
+                        continue;
+                    }
+                }
+            }
             printf("%d", vrrpHeader->priority);
         }
     }
@@ -121,6 +140,13 @@ void* arpListenerThreadFunction(void* vargp) {
             //ToDO!!!
             //printf("\nTarget IP: %s\n", inet_ntoa(*(struct in_addr*)arp->targetIP));
             printf("\n\n");
+
+
+            if (threadArgs->state->state == VRRP_STATE_BACKUP) {
+                if (threadArgs->detected_ipv4 == arp->targetIP) {
+                    continue;
+                }
+            }
         }
     }
 
@@ -237,7 +263,7 @@ int main() {
     state.ip_address = detected_ipv4->sin_addr.s_addr;
     state.vrid = 1;
     state.authentication_type = 0;
-
+    state.preempt_mode = 1;
 
 
     struct thread_creation_arguments threadArgs = {sock, &state, interfaces, detected_ipv4 };
