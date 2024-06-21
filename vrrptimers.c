@@ -40,7 +40,7 @@ void* masterTimerThreadFunction(void* vargp) {
 
         if (threadArgs->state->state == VRRP_STATE_BACKUP && threadArgs->state->master_down_timer == 0) {
             send_vrrp_packet(threadArgs->state, threadArgs->pInterface, threadArgs->sock, threadArgs->detected_ipv4);
-            send_arp_packet(threadArgs->pInterface, threadArgs->sock, threadArgs->state->vrid, threadArgs->detected_ipv4);
+            send_arp_packet(threadArgs->pInterface, threadArgs->sock, threadArgs->state->vrid, threadArgs->state);
             threadArgs->state->advertisement_timer = threadArgs->state->advertisement_interval;
             threadArgs->state->state = VRRP_STATE_MASTER;
         }
