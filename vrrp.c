@@ -193,7 +193,9 @@ int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct v
 	for (int i = 5; i >= 0; i--) {
 		arp->srcMAC[i] = eth->h_source[i];
 	}
-
+	for (int i = 5; i >= 0; i--) {
+		arp->targetMAC[i] = 0x00;
+	}
 	arp->srcIP = state->ip_address;
 	arp->targetIP = state->ip_address;
 
