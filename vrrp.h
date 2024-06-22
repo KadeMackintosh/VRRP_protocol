@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include <pcap.h>
+#include <linux/if_ether.h>
 
 #define VRRP_STATE_INIT 0
 #define VRRP_STATE_BACKUP 1
@@ -38,9 +39,9 @@ struct arpHdr{
 	uint8_t  hwLen; //1
 	uint8_t  protoLen; //1 
 	uint16_t opcode; //2
-	uint8_t  srcMAC[6];  //6
+	uint8_t  srcMAC[ETH_ALEN];  //6
 	uint32_t srcIP; //4
-	uint8_t  targetMAC[6]; //6
+	uint8_t  targetMAC[ETH_ALEN]; //6
 	uint32_t targetIP; // 4
 } __attribute__ ((packed));
 

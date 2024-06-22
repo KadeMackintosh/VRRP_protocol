@@ -36,7 +36,7 @@ void init_state(vrrp_state* state, pcap_if_t* pInterface, int sock, struct socka
 
 	if (state->priority == 255)
 	{
-		//send_arp_packet(pInterface, sock, state->vrid, detected_ipv4);
+		send_arp_packet(pInterface, sock, state->vrid, detected_ipv4);
 
 		state->advertisement_timer = state->advertisement_interval;
 		state->state = VRRP_STATE_MASTER;
