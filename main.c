@@ -97,6 +97,17 @@ void* vrrpListenerThreadFunction(void* vargp)
 void* arpListenerThreadFunction(void* vargp) {
     struct thread_creation_arguments* threadArgs = (struct thread_creation_arguments*) vargp;
     pcap_if_t* interface = threadArgs->pInterface;
+
+    pcap_addr_t* address = interface->addresses;
+    struct sockaddr_ll* ssl;
+	while (address) { // FIND MY OWN MAC ADDRESS 
+		if (address->addr && address->addr->sa_family == AF_PACKET) {
+			address->addr;
+			break;
+		}
+		address = address->next;
+	}
+
     int sockfd;
     uint8_t buffer[ETH_FRAME_LEN];
     
@@ -131,11 +142,10 @@ void* arpListenerThreadFunction(void* vargp) {
 
         // Check if it's an ARP packet addressed to the VRRP multicast mac address:
         unsigned char vrrp_multicast_mac[6] = {0x01, 0x00, 0x5e, 0x00, 0x00, 0x01};
-        unsigned char my_mac[6] = {0x08,0x00,0x27,0x9c,0xc5,0x88}; 
-        //ToDo: use dynamic my_mac from interface, and make sure I don't listen and respond to my own arp requests!
 
         if ((ntohs(eth->h_proto) == ETH_P_ARP) && 
-        (memcmp(eth->h_dest, vrrp_multicast_mac, 6) == 0)) {
+        (memcmp(eth->h_dest, vrrp_multicast_mac, 6) == 0) && //listen to only vrrp multicast MAC
+        (memcmp(eth->h_dest, ((struct sockaddr_ll*)address->addr)->sll_addr, 6) != 0)) {  //and don't listen to my own MAC ARP messages
 
             printf("\nReceived ARP packet --->\n");
             printf("Raw buffer data:\n");
