@@ -20,6 +20,7 @@ void print_mac_address(uint8_t* mac) {
         printf("%02x", mac[i]);
         if (i < 5) printf(":");
     }
+    printf("\n");
 }
 
 // Function to print buffer in hexadecimal format
@@ -98,7 +99,7 @@ void* arpListenerThreadFunction(void* vargp) {
     pcap_if_t* interface = threadArgs->pInterface;
     int sockfd;
     uint8_t buffer[ETH_FRAME_LEN];
-
+    
     struct sockaddr saddr;
     socklen_t saddr_len = sizeof(struct sockaddr);
 
@@ -118,7 +119,7 @@ void* arpListenerThreadFunction(void* vargp) {
     while (1) {
         // Receive packet
         memset(buffer, 0, ETH_FRAME_LEN);
-        int data_size = recvfrom(sockfd, buffer, ETH_FRAME_LEN, 0, &saddr, &saddr_len);
+        int data_size = read(sockfd, buffer, ETH_FRAME_LEN);
         if (data_size < 0) {
             perror("Recvfrom error");
             close(sockfd);
@@ -128,29 +129,30 @@ void* arpListenerThreadFunction(void* vargp) {
         // Get Ethernet header
         struct ethhdr* eth = (struct ethhdr*) buffer;
 
-        printf("Raw buffer data:\n");
-        print_buffer(buffer, data_size);
+        // Check if it's an ARP packet addressed to the VRRP multicast mac address:
+        unsigned char vrrp_multicast_mac[6] = {0x01, 0x00, 0x5e, 0x00, 0x00, 0x01};
+        unsigned char my_mac[6] = {0x08,0x00,0x27,0x9c,0xc5,0x88}; 
+        //ToDo: use dynamic my_mac from interface, and make sure I don't listen and respond to my own arp requests!
 
-        // Check if it's an ARP packet
-        if (ntohs(eth->h_proto) == ETH_P_ARP) {
+        if ((ntohs(eth->h_proto) == ETH_P_ARP) && 
+        (memcmp(eth->h_dest, vrrp_multicast_mac, 6) == 0)) {
+
+            printf("\nReceived ARP packet --->\n");
+            printf("Raw buffer data:\n");
+            print_buffer(buffer, data_size);
+
             struct arpHdr* arp = (struct arpHdr*) (buffer + sizeof(struct ethhdr));
-            printf("Received ARP packet:\n");
-            printf("Sender MAC: ");
-            print_mac_address(eth->h_source);
-            //ToDO!!!
-           // printf("\nSender IP: %s\n", inet_ntoa(*(struct in_addr*)arp->srcIP));
-            printf("Target MAC: ");
+            printf("ETH_DST_MAC: ");
             print_mac_address(eth->h_dest);
-            //ToDO!!!
-            //printf("\nTarget IP: %s\n", inet_ntoa(*(struct in_addr*)arp->targetIP));
+            // printf("\nSender IP: %s\n", arp->srcIP);
+            // printf("\nTarget IP: %s\n", arp->targetIP);
+            printf("ETH_SRC_MAC: ");
+            print_mac_address(eth->h_source);
             printf("\n\n");
 
+            
+            //TODO: treba akceptovat init ARP a asi nan odpovedat alebo co...
 
-            if (threadArgs->state->state == VRRP_STATE_BACKUP) {
-                if (threadArgs->detected_ipv4 == arp->targetIP) {
-                    continue;
-                }
-            }
         }
     }
 

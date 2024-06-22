@@ -157,6 +157,11 @@ int send_vrrp_packet(vrrp_state* state, pcap_if_t* pInterface, int sock, struct 
 int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct vrrp_state* state) {
 
 	unsigned int msgLen = sizeof(struct ethhdr) + sizeof(struct arpHdr);
+
+	if (msgLen < 60) {
+		msgLen = 60;
+	}
+
 	uint8_t* msg = (uint8_t*)malloc(msgLen);
 	if (msg == NULL) {
 		perror("malloc()");
@@ -178,11 +183,11 @@ int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct v
 		address = address->next;
 	}
 
-	eth->h_dest[0] = 0x00; // Multicast OUI
+	eth->h_dest[0] = 0x01; // Multicast OUI
 	eth->h_dest[1] = 0x00;
 	eth->h_dest[2] = 0x5E;
 	eth->h_dest[3] = 0x00;
-	eth->h_dest[4] = 0x01;
+	eth->h_dest[4] = 0x00;
 	eth->h_dest[5] = vrid; // VRID
 
 	eth->h_proto = htons(ARP_ETHER_TYPE);
