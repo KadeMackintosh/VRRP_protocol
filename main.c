@@ -45,6 +45,7 @@ void* vrrpListenerThreadFunction(void* vargp)
         perror("SOCKET:");
         exit(EXIT_FAILURE);
     }
+
     struct sockaddr_ll cAddr;
     memset(&cAddr, 0, sizeof(cAddr));
     cAddr.sll_family = AF_PACKET;
@@ -54,18 +55,50 @@ void* vrrpListenerThreadFunction(void* vargp)
         close(sock2);
         exit(EXIT_FAILURE);
     }
-    struct sockaddr_ll* sll = (struct sockaddr_ll*)threadArgs->pInterface->addresses->addr;
-    uint8_t routerMacAddress[6];
-    memcpy(routerMacAddress, sll->sll_addr, 6);
-    while (1) {
-        memset(&buffer, 0, ETH_FRAME_LEN);
+    // struct sockaddr_ll* sll = (struct sockaddr_ll*)threadArgs->pInterface->addresses->addr; //?
+    pcap_addr_t* address = threadArgs->pInterface->addresses;
+	while (address) { // FIND MY OWN MAC ADDRESS 
+		if (address->addr && address->addr->sa_family == AF_PACKET) {
+			address->addr;
+			break;
+		}
+		address = address->next;
+	}
 
-        read(sock2, buffer, ETH_FRAME_LEN);
+    uint8_t routerMacAddress[6];
+    memcpy(routerMacAddress, ((struct sockaddr_ll*)address->addr)->sll_addr, 6);
+
+    // printf("routerMacAddress MAC is -> ");
+    // print_mac_address(routerMacAddress);
+
+    unsigned char vrrp_multicast_mac[6] = {0x01, 0x00, 0x5e, 0x00, 0x00, 0x01};
+    while (1) {
+        memset(buffer, 0, ETH_FRAME_LEN);
+
+        int read_data = read(sock2, buffer, ETH_FRAME_LEN);
+        if (read_data < 0) {
+            perror("VRRP read error");
+            close(sock2);
+            return NULL;
+        }
         struct ethhdr* eth = (struct ethhdr*)buffer;
         struct iphdr* ipHeader = (struct iphdr*)(buffer + sizeof(struct ethhdr));
-        struct vrrp_header* vrrpHeader = (struct vrrp_header*)(buffer + sizeof(struct ethhdr) + sizeof(struct iphdr));
 
-        if (ipHeader->protocol == 112) {
+        if (ipHeader->protocol == 112 && 
+        (memcmp(eth->h_dest, vrrp_multicast_mac, 6) == 0) && //listen to only vrrp multicast MAC
+        (memcmp(eth->h_source, routerMacAddress, 6) != 0)) { //and don't listen to my own MAC VRRP messages
+            struct vrrp_header* vrrpHeader = (struct vrrp_header*)(buffer + sizeof(struct ethhdr) + sizeof(struct iphdr));
+            printf("\nReceived VRRP packet --->\n");
+            printf("Raw VRRP buffer data:\n");
+            print_buffer(buffer, read_data);
+            printf("ETH_DST_MAC: ");
+            print_mac_address(eth->h_dest);
+            // printf("\nSender IP: %s\n", arp->srcIP);
+            // printf("\nTarget IP: %s\n", arp->targetIP);
+            printf("ETH_SRC_MAC: ");
+            print_mac_address(eth->h_source);
+            printf("\n\n");
+
             if (verify_vrrp_packet(threadArgs->state, ipHeader, vrrpHeader) == -1) {
                 continue;
             }
@@ -99,7 +132,6 @@ void* arpListenerThreadFunction(void* vargp) {
     pcap_if_t* interface = threadArgs->pInterface;
 
     pcap_addr_t* address = interface->addresses;
-    struct sockaddr_ll* ssl;
 	while (address) { // FIND MY OWN MAC ADDRESS 
 		if (address->addr && address->addr->sa_family == AF_PACKET) {
 			address->addr;
@@ -132,7 +164,7 @@ void* arpListenerThreadFunction(void* vargp) {
         memset(buffer, 0, ETH_FRAME_LEN);
         int data_size = read(sockfd, buffer, ETH_FRAME_LEN);
         if (data_size < 0) {
-            perror("Recvfrom error");
+            perror("ARP read error");
             close(sockfd);
             return NULL;
         }
@@ -145,10 +177,10 @@ void* arpListenerThreadFunction(void* vargp) {
 
         if ((ntohs(eth->h_proto) == ETH_P_ARP) && 
         (memcmp(eth->h_dest, vrrp_multicast_mac, 6) == 0) && //listen to only vrrp multicast MAC
-        (memcmp(eth->h_dest, ((struct sockaddr_ll*)address->addr)->sll_addr, 6) != 0)) {  //and don't listen to my own MAC ARP messages
+        (memcmp(eth->h_source, ((struct sockaddr_ll*)address->addr)->sll_addr, 6) != 0)) {  //and don't listen to my own MAC ARP messages
 
             printf("\nReceived ARP packet --->\n");
-            printf("Raw buffer data:\n");
+            printf("Raw ARP buffer data:\n");
             print_buffer(buffer, data_size);
 
             struct arpHdr* arp = (struct arpHdr*) (buffer + sizeof(struct ethhdr));
@@ -289,20 +321,21 @@ int main() {
 
     pthread_create(&arpListenerThread, NULL, arpListenerThreadFunction, (void*)&threadArgs);
     printf("Init ARP thread listener\n");
-
-
-     pthread_create(&vrrpListenerThread, NULL, vrrpListenerThreadFunction, (void*)&threadArgs);
-    // printf("Init VRRP thread listener\n");
     
+    pthread_create(&vrrpListenerThread, NULL, vrrpListenerThreadFunction, (void*)&threadArgs); 
+    printf("Init VRRP thread listener\n");
+
     pthread_create(&advertisementTimerThread, NULL, advertisementTimerThreadFunction, (void*)&threadArgs);
     pthread_create(&masterTimerThread, NULL, masterTimerThreadFunction, (void*)&threadArgs);
-    // todo test
-    //send_vrrp_packet(&state, interfaces, sock, detected_ipv4);
-    // printf("poslali sme veci");
 
+    
+    
     pthread_join(&arpListenerThread);
     pthread_join(&vrrpListenerThread);
-    // Free the list of interfaces
+
+    pthread_join(&advertisementTimerThread);
+    pthread_join(&masterTimerThread);
+
     pcap_freealldevs(interfaces);
 
     return EXIT_SUCCESS;
