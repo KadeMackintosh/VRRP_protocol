@@ -210,7 +210,7 @@ void* arpListenerThreadFunction(void* vargp) {
             print_mac_address(eth->h_source);
             printf("\n\n");
 
-            if (threadArgs->state->state == VRRP_STATE_MASTER) {
+            if (threadArgs->state->state == VRRP_STATE_MASTER && arp->opcode == 1) {
                 if (arp->targetIP == threadArgs->detected_ipv4) {
                     send_arp_reply(threadArgs->pInterface, threadArgs->sock, threadArgs->state->vrid, threadArgs->state, arp->targetIP, eth->h_dest);
                 }
