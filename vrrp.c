@@ -36,7 +36,7 @@ void init_state(vrrp_state* state, pcap_if_t* pInterface, int sock, struct socka
 
 	if (state->priority == 255)
 	{
-		send_arp_packet(pInterface, sock, state->vrid, state);
+		send_gratuitous_arp(pInterface, sock, state->vrid, state);
 
 		state->advertisement_timer = state->advertisement_interval;
 		state->state = VRRP_STATE_MASTER;
@@ -106,11 +106,11 @@ int send_vrrp_packet(vrrp_state* state, pcap_if_t* pInterface, int sock, struct 
 		}
 		address = address->next;
 	}
-	eth->h_dest[0] = 0x01;
+	eth->h_dest[0] = 0x00;
 	eth->h_dest[1] = 0x00;
 	eth->h_dest[2] = 0x5E;
 	eth->h_dest[3] = 0x00;
-	eth->h_dest[4] = 0x00;
+	eth->h_dest[4] = 0x01;
 	eth->h_dest[5] = state->vrid;
 	eth->h_proto = htons(ETH_P_IP);
 
@@ -154,13 +154,9 @@ int send_vrrp_packet(vrrp_state* state, pcap_if_t* pInterface, int sock, struct 
 
 }
 
-int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct vrrp_state* state) {
+int send_gratuitous_arp(pcap_if_t* interface, int sockClient, uint8_t vrid, struct vrrp_state* state) {
 
 	unsigned int msgLen = sizeof(struct ethhdr) + sizeof(struct arpHdr);
-
-	if (msgLen < 60) {
-		msgLen = 60;
-	}
 
 	uint8_t* msg = (uint8_t*)malloc(msgLen);
 	if (msg == NULL) {
@@ -183,11 +179,11 @@ int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct v
 		address = address->next;
 	}
 
-	eth->h_dest[0] = 0x01; // Multicast OUI
+	eth->h_dest[0] = 0x00; // Multicast OUI
 	eth->h_dest[1] = 0x00;
 	eth->h_dest[2] = 0x5E;
 	eth->h_dest[3] = 0x00;
-	eth->h_dest[4] = 0x00;
+	eth->h_dest[4] = 0x01;
 	eth->h_dest[5] = vrid; // VRID
 
 	eth->h_proto = htons(ARP_ETHER_TYPE);
@@ -208,6 +204,65 @@ int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct v
 	}
 	arp->srcIP = state->ip_address;
 	arp->targetIP = state->ip_address;
+
+	if (write(sockClient, msg, msgLen) == -1) {
+		perror("write()");
+		close(sockClient);
+		free((void*)msg);
+		return -1;
+	}
+}
+
+int send_arp_reply(pcap_if_t* interface, int sockClient, uint8_t vrid, struct vrrp_state* state, uint32_t targetIp, uint8_t targetMac[6]) {
+	unsigned int msgLen = sizeof(struct ethhdr) + sizeof(struct arpHdr);
+
+
+	uint8_t* msg = (uint8_t*)malloc(msgLen);
+	if (msg == NULL) {
+		perror("malloc()");
+		close(sockClient);
+		return -1;
+	}
+
+	memset(msg, 0, msgLen);
+	struct ethhdr* eth;
+	eth = (struct ethhdr*)msg;
+	pcap_addr_t* address = interface->addresses;
+	while (address) {
+		if (address->addr && address->addr->sa_family == AF_PACKET) {
+
+			struct sockaddr_ll* sll = (struct sockaddr_ll*)address->addr;
+			memcpy(eth->h_source, sll->sll_addr, 6);
+			break;
+		}
+		address = address->next;
+	}
+
+	eth->h_dest[0] = targetMac[0];
+	eth->h_dest[1] = targetMac[1];
+	eth->h_dest[2] = targetMac[2];
+	eth->h_dest[3] = targetMac[3];
+	eth->h_dest[4] = targetMac[4];
+	eth->h_dest[5] = targetMac[5];
+
+	eth->h_proto = htons(ARP_ETHER_TYPE);
+
+	struct arpHdr* arp;
+	arp = (struct arpHdr*)(msg + sizeof(struct ethhdr));
+	arp->hwType = htons(HW_TYPE);
+	arp->protoType = htons(IP_PROTO);
+	arp->hwLen = HW_LEN;
+	arp->protoLen = IP_LEN;
+	arp->opcode = htons(2);
+
+	for (int i = 5; i >= 0; i--) {
+		arp->srcMAC[i] = eth->h_source[i];
+	}
+	for (int i = 5; i >= 0; i--) {
+		arp->targetMAC[i] = eth->h_dest[i];
+	}
+	arp->srcIP = state->ip_address;
+	arp->targetIP = targetIp;
 
 	if (write(sockClient, msg, msgLen) == -1) {
 		perror("write()");

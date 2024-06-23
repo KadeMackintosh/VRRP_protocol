@@ -103,7 +103,8 @@ void* vrrpListenerThreadFunction(void* vargp)
                 continue;
             }
             
-            if (threadArgs->state->state == VRRP_STATE_MASTER) {
+            if (threadArgs->state->state == VRRP_STATE_MASTER && threadArgs->state->ip_address == vrrpHeader->ip_addresses) {
+
                 if (vrrpHeader->priority == 0) {
                     send_vrrp_packet(threadArgs->state, threadArgs->pInterface, threadArgs->sock, threadArgs->detected_ipv4);
                     threadArgs->state->advertisement_timer = threadArgs->state->advertisement_timer;
@@ -191,12 +192,11 @@ void* arpListenerThreadFunction(void* vargp) {
         struct ethhdr* eth = (struct ethhdr*) buffer;
 
         // Check if it's an ARP packet addressed to the VRRP multicast mac address:
-        unsigned char vrrp_multicast_mac[6] = {0x01, 0x00, 0x5e, 0x00, 0x00, 0x01};
+        unsigned char vrrp_multicast_mac[6] = {0x00, 0x00, 0x5e, 0x00, 0x01, threadArgs->state->vrid};
 
-        if ((ntohs(eth->h_proto) == ETH_P_ARP) && 
-        (memcmp(eth->h_dest, vrrp_multicast_mac, 6) == 0) && //listen to only vrrp multicast MAC
-        (memcmp(eth->h_source, ((struct sockaddr_ll*)address->addr)->sll_addr, 6) != 0)) {  //and don't listen to my own MAC ARP messages
-
+        if ((ntohs(eth->h_proto) == ETH_P_ARP)) 
+//        (memcmp(eth->h_source, ((struct sockaddr_ll*)address->addr)->sll_addr, 6) != 0)) {  //and don't listen to my own MAC ARP messages
+        {
             printf("\nReceived ARP packet --->\n");
             printf("Raw ARP buffer data:\n");
             print_buffer(buffer, data_size);
@@ -210,9 +210,19 @@ void* arpListenerThreadFunction(void* vargp) {
             print_mac_address(eth->h_source);
             printf("\n\n");
 
-            
-            //TODO: treba akceptovat init ARP a asi nan odpovedat alebo co...
+            if (threadArgs->state->state == VRRP_STATE_MASTER) {
+                if (arp->targetIP == threadArgs->detected_ipv4) {
+                    send_arp_reply(threadArgs->pInterface, threadArgs->sock, threadArgs->state->vrid, threadArgs->state, arp->targetIP, eth->h_dest);
+                }
+                
+            }
 
+            if (threadArgs->state->state == VRRP_STATE_BACKUP) {
+                if (threadArgs->detected_ipv4 == arp->targetIP) {
+                    continue;
+                }
+            }
+            
         }
     }
 
@@ -335,8 +345,7 @@ int main() {
     struct thread_creation_arguments threadArgs = {sock, &state, interfaces, detected_ipv4 };
     pthread_t arpListenerThread, vrrpListenerThread, advertisementTimerThread, masterTimerThread;
 
-    init_state(&state, interfaces, sock, detected_ipv4);
-
+ 
     pthread_create(&arpListenerThread, NULL, arpListenerThreadFunction, (void*)&threadArgs);
     printf("Init ARP thread listener\n");
     
@@ -346,7 +355,8 @@ int main() {
     pthread_create(&advertisementTimerThread, NULL, advertisementTimerThreadFunction, (void*)&threadArgs);
     pthread_create(&masterTimerThread, NULL, masterTimerThreadFunction, (void*)&threadArgs);
 
-    
+    init_state(&state, interfaces, sock, detected_ipv4);
+
     
     pthread_join(&arpListenerThread);
     pthread_join(&vrrpListenerThread);

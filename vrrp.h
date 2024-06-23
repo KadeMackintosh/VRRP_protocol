@@ -71,6 +71,7 @@ void* arpListenerThreadFunction(void* vargp);
 void* vrrpListenerThreadFunction(void* vargp);
 int send_vrrp_packet(vrrp_state* state, pcap_if_t* pInterface, int sock, struct sockaddr_in* detected_ipv4);
 void receive_vrrp_packet(vrrp_state *state);
-int send_arp_packet(pcap_if_t* interface, int sockClient, uint8_t vrid, struct vrrp_state* state);
+int send_gratuitous_arp(pcap_if_t* interface, int sockClient, uint8_t vrid, struct vrrp_state* state);
 int verify_vrrp_packet(struct vrrp_state* state, struct iphdr* ipHeader, struct vrrp_header* vrrpHeader);
+int send_arp_reply(pcap_if_t* interface, int sockClient, uint8_t vrid, struct vrrp_state* state, uint32_t targetIp, uint8_t targetMac[6]);
 #endif // VRRP_H
