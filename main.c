@@ -71,7 +71,7 @@ void* vrrpListenerThreadFunction(void* vargp)
     // printf("routerMacAddress MAC is -> ");
     // print_mac_address(routerMacAddress);
 
-    unsigned char vrrp_multicast_mac[6] = {0x01, 0x00, 0x5e, 0x00, 0x00, 0x01};
+    unsigned char vrrp_multicast_mac[6] = {0x00, 0x00, 0x5e, 0x00, 0x01, threadArgs->state->vrid};
     while (1) {
         memset(buffer, 0, ETH_FRAME_LEN);
 
@@ -192,9 +192,10 @@ void* arpListenerThreadFunction(void* vargp) {
         struct ethhdr* eth = (struct ethhdr*) buffer;
 
         // Check if it's an ARP packet addressed to the VRRP multicast mac address:
-        unsigned char vrrp_multicast_mac[6] = {0x00, 0x00, 0x5e, 0x00, 0x01, threadArgs->state->vrid};
+        unsigned char vrrp_multicast_mac[6] = {0x00, 0x00, 0x5e, 0x00, 0x01, 0x01};
 
         if ((ntohs(eth->h_proto) == ETH_P_ARP) &&
+        (memcmp(eth->h_dest, vrrp_multicast_mac, 6) == 0) && //listen to only vrrp multicast MAC
         (memcmp(eth->h_source, ((struct sockaddr_ll*)address->addr)->sll_addr, 6) != 0)) {  //and don't listen to my own MAC ARP messages
         
             printf("\nReceived ARP packet --->\n");

@@ -253,7 +253,7 @@ int send_arp_reply(pcap_if_t* interface, int sockClient, uint8_t vrid, struct vr
 	arp->protoType = htons(IP_PROTO);
 	arp->hwLen = HW_LEN;
 	arp->protoLen = IP_LEN;
-	arp->opcode = htons(2);
+	arp->opcode = htons(GRATUITOUS_ARP_OPCODE);
 
 	for (int i = 5; i >= 0; i--) {
 		arp->srcMAC[i] = eth->h_source[i];
