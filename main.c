@@ -331,6 +331,13 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
+    uint8_t vrid;
+    printf("Enter VRID (1-255): ");
+    if (scanf("%hhu", &vrid) != 1) {
+        fprintf(stderr, "Invalid input for VRID.\n");
+        return -1;
+    }
+
     vrrp_state state;
     state.state = VRRP_STATE_INIT;
     state.priority = 255;
@@ -338,7 +345,7 @@ int main() {
     state.advertisement_interval = 1;
     state.master_down_interval = (3 * state.advertisement_interval) + state.skew_time;
     state.ip_address = detected_ipv4->sin_addr.s_addr;
-    state.vrid = 1;
+    state.vrid = vrid;
     state.authentication_type = 0;
     state.preempt_mode = 1;
 
