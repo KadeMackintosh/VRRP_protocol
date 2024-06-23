@@ -194,9 +194,9 @@ void* arpListenerThreadFunction(void* vargp) {
         // Check if it's an ARP packet addressed to the VRRP multicast mac address:
         unsigned char vrrp_multicast_mac[6] = {0x00, 0x00, 0x5e, 0x00, 0x01, threadArgs->state->vrid};
 
-        if ((ntohs(eth->h_proto) == ETH_P_ARP)) 
-//        (memcmp(eth->h_source, ((struct sockaddr_ll*)address->addr)->sll_addr, 6) != 0)) {  //and don't listen to my own MAC ARP messages
-        {
+        if ((ntohs(eth->h_proto) == ETH_P_ARP) &&
+        (memcmp(eth->h_source, ((struct sockaddr_ll*)address->addr)->sll_addr, 6) != 0)) {  //and don't listen to my own MAC ARP messages
+        
             printf("\nReceived ARP packet --->\n");
             printf("Raw ARP buffer data:\n");
             print_buffer(buffer, data_size);
