@@ -102,6 +102,24 @@ void* vrrpListenerThreadFunction(void* vargp)
             if (verify_vrrp_packet(threadArgs->state, ipHeader, vrrpHeader) == -1) {
                 continue;
             }
+            
+            if (threadArgs->state->state == VRRP_STATE_MASTER) {
+                if (vrrpHeader->priority == 0) {
+                    send_vrrp_packet(threadArgs->state, threadArgs->pInterface, threadArgs->sock, threadArgs->detected_ipv4);
+                    threadArgs->state->advertisement_timer = threadArgs->state->advertisement_timer;
+
+                }
+                else if (vrrpHeader->priority > threadArgs->state->priority || (threadArgs->state->priority == vrrpHeader->priority && vrrpHeader->ip_addresses > threadArgs->detected_ipv4)) {
+                    threadArgs->state->advertisement_timer = -1;
+                    threadArgs->state->master_down_timer = threadArgs->state->master_down_interval;
+                    threadArgs->state->state = VRRP_STATE_BACKUP;
+                    continue;
+                }
+                else {
+                    continue;
+                }
+                    
+            }
 
             if (threadArgs->state->state == VRRP_STATE_BACKUP) {
                 if (vrrpHeader->ip_addresses == threadArgs->detected_ipv4 ||
