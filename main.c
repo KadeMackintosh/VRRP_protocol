@@ -118,7 +118,7 @@ void* arpListenerThreadFunction(void* vargp) {
         struct ethhdr* eth = (struct ethhdr*) buffer;
 
         // Check if it's an ARP packet addressed to the VRRP multicast mac address:
-        unsigned char vrrp_multicast_mac[6] = {0x01, 0x00, 0x5e, 0x00, 0x00, 0x01};
+        unsigned char vrrp_multicast_mac[6] = {0x00, 0x00, 0x5e, 0x00, 0x01, 0x01};
         unsigned char my_mac[6] = {0x08,0x00,0x27,0x9c,0xc5,0x88}; 
         //ToDo: use dynamic my_mac from interface, and make sure I don't listen and respond to my own arp requests!
 

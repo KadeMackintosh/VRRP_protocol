@@ -101,11 +101,11 @@ int send_vrrp_packet(vrrp_state* state, pcap_if_t* pInterface, int sock, struct 
 		}
 		address = address->next;
 	}
-	eth->h_dest[0] = 0x01;
+	eth->h_dest[0] = 0x00;
 	eth->h_dest[1] = 0x00;
 	eth->h_dest[2] = 0x5E;
 	eth->h_dest[3] = 0x00;
-	eth->h_dest[4] = 0x00;
+	eth->h_dest[4] = 0x01;
 	eth->h_dest[5] = state->vrid;
 	eth->h_proto = htons(ETH_P_IP);
 
