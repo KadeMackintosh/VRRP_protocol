@@ -177,7 +177,7 @@ void* arpListenerThreadFunction(void* vargp) {
         close(sockfd);
         return NULL;
     }
-
+    unsigned char vrrp_multicast_mac[6] = {0x00, 0x00, 0x5e, 0x00, 0x01, threadArgs->state->vrid};
     while (1) {
         // Receive packet
         memset(buffer, 0, ETH_FRAME_LEN);
@@ -190,9 +190,6 @@ void* arpListenerThreadFunction(void* vargp) {
 
         // Get Ethernet header
         struct ethhdr* eth = (struct ethhdr*) buffer;
-
-        // Check if it's an ARP packet addressed to the VRRP multicast mac address:
-        unsigned char vrrp_multicast_mac[6] = {0x00, 0x00, 0x5e, 0x00, 0x01, 0x01};
 
         if ((ntohs(eth->h_proto) == ETH_P_ARP) &&
         (memcmp(eth->h_dest, vrrp_multicast_mac, 6) == 0) && //listen to only vrrp multicast MAC
