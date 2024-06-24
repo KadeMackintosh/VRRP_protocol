@@ -84,9 +84,7 @@ void* vrrpListenerThreadFunction(void* vargp)
         struct ethhdr* eth = (struct ethhdr*)buffer;
         struct iphdr* ipHeader = (struct iphdr*)(buffer + sizeof(struct ethhdr));
 
-        if (ipHeader->protocol == 112 && 
-        (memcmp(eth->h_dest, vrrp_multicast_mac, 6) == 0) && //listen to only vrrp multicast MAC
-        (memcmp(eth->h_source, routerMacAddress, 6) != 0)) { //and don't listen to my own MAC VRRP messages
+        if (ipHeader->protocol == 112 && (memcmp(eth->h_source, routerMacAddress, 6) != 0)) { //and don't listen to my own MAC VRRP messages
             struct vrrp_header* vrrpHeader = (struct vrrp_header*)(buffer + sizeof(struct ethhdr) + sizeof(struct iphdr));
             printf("\nReceived VRRP packet --->\n");
             printf("Raw VRRP buffer data:\n");
@@ -191,9 +189,7 @@ void* arpListenerThreadFunction(void* vargp) {
         // Get Ethernet header
         struct ethhdr* eth = (struct ethhdr*) buffer;
 
-        if ((ntohs(eth->h_proto) == ETH_P_ARP) &&
-        (memcmp(eth->h_dest, vrrp_multicast_mac, 6) == 0) && //listen to only vrrp multicast MAC
-        (memcmp(eth->h_source, ((struct sockaddr_ll*)address->addr)->sll_addr, 6) != 0)) {  //and don't listen to my own MAC ARP messages
+        if ((ntohs(eth->h_proto) == ETH_P_ARP) && (memcmp(eth->h_source, ((struct sockaddr_ll*)address->addr)->sll_addr, 6) != 0)) {  //and don't listen to my own MAC ARP messages
         
             printf("\nReceived ARP packet --->\n");
             printf("Raw ARP buffer data:\n");
